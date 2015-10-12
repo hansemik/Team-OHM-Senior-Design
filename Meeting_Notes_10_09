@@ -1,0 +1,19 @@
+Stake-holder Meeting Notes (10/09/2015)
+
+Ryan Murphy, Mikkel Hansen, Michael Oatman
+
+•	Met with Professor Borello (Stake-holder) and Kelly (Grad student)
+•	Project is funded by regional transportation group
+•	Largest problem will likely be time synchronization with accelerometer data
+•	Strain gauges will be used
+•	Data must be sent out wirelessly every 10 minutes
+  •	Data sampled for 30 seconds
+  •	Equations run on data in each node locally before data is sent out
+  •	Data must have accuracy of 2 bytes
+  •	Data must be sampled at 100Hz
+  •	Requirement may be adjusted based on power consumption
+•	Approximate cost set at $50/node
+  •	8 sensors per node
+•	Sensors placed up to 200-300 ft apart
+•	Stake-holder requested weekly meetings
+•	Research for next meeting: Time synchronization options, Power platforms
