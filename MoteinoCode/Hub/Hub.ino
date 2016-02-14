@@ -409,6 +409,9 @@ void loop() {
           Serial.println(F("Sent!"));
         }
     }
+    if(radio.DATA[0] == 'W'){
+      
+    }
       //Serial.print(" ");
       //Serial.print((char)radio.DATA[i]);
     
