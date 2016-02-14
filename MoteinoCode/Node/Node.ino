@@ -12,6 +12,7 @@
 #include <UserInterface.h>
 #include <QuikEval_EEPROM.h>
 #include <LT_SPI.h>
+#include <String.h>
 
 //*********************************************************************************************
 //************ IMPORTANT SETTINGS - YOU MUST CHANGE/CONFIGURE TO FIT YOUR HARDWARE *************
@@ -107,6 +108,7 @@ long lastPeriod = 0;
 int voltage = 0;
 //int A_pin = 0
 
+String input = "";
 void loop() {
   float adc_voltage;
   uint8_t user_command;
@@ -114,20 +116,20 @@ void loop() {
   uint16_t adc_code = 0;                           // The LTC1867 code
 
   
-  pinMode(LTC1867L_SS, OUTPUT);
-  SPI.begin();
-  quikeval_SPI_init();
+  //pinMode(LTC1867L_SS, OUTPUT);
+  //SPI.begin();
+  //quikeval_SPI_init();
 
-  adc_command = BUILD_COMMAND_SINGLE_ENDED[0] | uni_bi_polar;
-  LTC1867_read(LTC1867L_SS, adc_command, &adc_code); // Throws out last reading
-  LTC1867_read(LTC1867L_SS, adc_command, &adc_code);
-  Serial.print(F("Received Code: 0x"));
-  Serial.println(adc_command, HEX);
+  //adc_command = BUILD_COMMAND_SINGLE_ENDED[0] | uni_bi_polar;
+  //LTC1867_read(LTC1867L_SS, adc_command, &adc_code); // Throws out last reading
+  //LTC1867_read(LTC1867L_SS, adc_command, &adc_code);
+  //Serial.print(F("Received Code: 0x"));
+  //Serial.println(adc_command, HEX);
 
-  if (uni_bi_polar == LTC1867_UNIPOLAR_MODE)
-    adc_voltage = LTC1867_unipolar_code_to_voltage(adc_code, LTC1867_lsb, LTC1867_offset_unipolar_code)/1.6384;
+  //if (uni_bi_polar == LTC1867_UNIPOLAR_MODE)
+  //  adc_voltage = LTC1867_unipolar_code_to_voltage(adc_code, LTC1867_lsb, LTC1867_offset_unipolar_code)/1.6384;
 
-  Serial.print(adc_voltage, 4);
+  //Serial.print(adc_voltage, 4);
   
   
   
@@ -139,24 +141,24 @@ void loop() {
   
   if (Serial.available() > 0)
   {
-    char input = Serial.read();
-    if (input >= 48 && input <= 57) //[0,9]
-    {
-      TRANSMITPERIOD = 100 * (input-48);
-      if (TRANSMITPERIOD == 0) TRANSMITPERIOD = 1000;
-      Serial.print("\nChanging delay to ");
-      Serial.print(TRANSMITPERIOD);
-      Serial.println("ms\n");
-    }
+    input = (String)Serial.readString();
+//    if (input >= 48 && input <= 57) //[0,9]
+//    {
+//      TRANSMITPERIOD = 100 * (input-48);
+//      if (TRANSMITPERIOD == 0) TRANSMITPERIOD = 1000;
+//      Serial.print("\nChanging delay to ");
+//      Serial.print(TRANSMITPERIOD);
+//      Serial.println("ms\n");
+//    }
 
-    if (input == 'r') //d=dump register values
+    if (input == "r") //d=dump register values
       radio.readAllRegs();
     //if (input == 'E') //E=enable encryption
     //  radio.encrypt(KEY);
     //if (input == 'e') //e=disable encryption
     //  radio.encrypt(null);
 
-    if (input == 'd') //d=dump flash area
+    if (input == "d") //d=dump flash area
     {
       Serial.println("Flash content:");
       uint16_t counter = 0;
@@ -169,23 +171,21 @@ void loop() {
       while(flash.busy());
       Serial.println();
     }
-    if (input == 'e')
+    if (input == "e")
     {
       Serial.print("Erasing Flash chip ... ");
       flash.chipErase();
       while(flash.busy());
       Serial.println("DONE");
     }
-    if (input == 'i')
+    if (input == "i")
     {
       Serial.print("DeviceID: ");
       word jedecid = flash.readDeviceId();
       Serial.println(jedecid, HEX);
     }
-  }
 
-
-  if (input == 'a')
+    if (input == "a")
     {
       //read adc values
       //todo: enable, get cpp and h files:LT_SPI
@@ -193,20 +193,43 @@ void loop() {
       menu_1_read_single_ended();
       Serial.print("DONE");
     }
-    if (input == 's')
+    if (input == "s")
     {
       Serial.print("Set pin 7");
       //set pin 7
       pinMode(2, OUTPUT);
         digitalWrite(2, HIGH);
     }
-    if (input == 'u')
+    if (input == "u")
     {
       Serial.print("Un-set pin 7");
       //un-set pin 7
       pinMode(LTC1867L_SS, OUTPUT);
       digitalWrite(LTC1867L_SS, LOW);
     }
+
+    if (input == "TEXT")
+    {
+    //send command
+    char sending[] = "TEXT";
+    //s.toCharArray(sending,5);
+    //sprintf(buff, sending);
+  
+    radio.send(GATEWAYID, sending, 4, 0);      
+    }
+
+    if (input == "WEBSITE")
+    {
+    //send text
+    char sending[] = "WEBSITE";
+    //s.toCharArray(sending,5);
+    //sprintf(buff, sending);
+  
+    radio.send(GATEWAYID, sending, 7, 0);      
+    }
+  }
+
+  
 
   //check for any received packets
   if (radio.receiveDone())

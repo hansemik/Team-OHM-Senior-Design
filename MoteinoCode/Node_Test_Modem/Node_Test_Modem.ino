@@ -115,20 +115,20 @@ void loop() {
   uint16_t adc_code = 0;                           // The LTC1867 code
 
   
-  pinMode(LTC1867L_SS, OUTPUT);
-  SPI.begin();
-  quikeval_SPI_init();
+  //pinMode(LTC1867L_SS, OUTPUT);
+  //SPI.begin();
+  //quikeval_SPI_init();
 
-  adc_command = BUILD_COMMAND_SINGLE_ENDED[0] | uni_bi_polar;
-  LTC1867_read(LTC1867L_SS, adc_command, &adc_code); // Throws out last reading
-  LTC1867_read(LTC1867L_SS, adc_command, &adc_code);
-  Serial.print(F("Received Code: 0x"));
-  Serial.println(adc_command, HEX);
+  //adc_command = BUILD_COMMAND_SINGLE_ENDED[0] | uni_bi_polar;
+  //LTC1867_read(LTC1867L_SS, adc_command, &adc_code); // Throws out last reading
+  //LTC1867_read(LTC1867L_SS, adc_command, &adc_code);
+  //Serial.print(F("Received Code: 0x"));
+  //Serial.println(adc_command, HEX);
 
-  if (uni_bi_polar == LTC1867_UNIPOLAR_MODE)
-    adc_voltage = LTC1867_unipolar_code_to_voltage(adc_code, LTC1867_lsb, LTC1867_offset_unipolar_code)/1.6384;
+  //if (uni_bi_polar == LTC1867_UNIPOLAR_MODE)
+  //  adc_voltage = LTC1867_unipolar_code_to_voltage(adc_code, LTC1867_lsb, LTC1867_offset_unipolar_code)/1.6384;
 
-  Serial.print(adc_voltage, 4);
+  //Serial.print(adc_voltage, 4);
   
   
   
@@ -209,6 +209,26 @@ void loop() {
       digitalWrite(LTC1867L_SS, LOW);
     }
 
+    if (input == 'T')
+    {
+    String s = "T";
+    char sending[] = "";
+    s.toCharArray(sending,2);
+    sprintf(buff, sending);
+    radio.send(GATEWAYID, sending, 1, 0);
+    Serial.println(sending);
+    }
+
+    if (input == 'W')
+    {
+    String s = "W";
+    char sending[] = "";
+    s.toCharArray(sending,2);
+    sprintf(buff, sending);
+    radio.send(GATEWAYID, sending, 1, 0);  
+    Serial.println(sending);
+    }
+
   //check for any received packets
   if (radio.receiveDone())
   {
@@ -222,8 +242,10 @@ void loop() {
       radio.sendACK();
       Serial.print(" - ACK sent");
     }
-    Blink(LED,3);
-    Serial.println();
+
+    
+    //Blink(LED,3);
+    //Serial.println();
   }
 
   int currPeriod = millis()/TRANSMITPERIOD;
@@ -252,19 +274,19 @@ void loop() {
 
       //char sending[] = itoa(voltage);
 
-      String s = String(adc_voltage);
-      char sending[] = "";
-      s.toCharArray(sending,5);
+//      String s = String(adc_voltage);
+//      char sending[] = "";
+//      s.toCharArray(sending,5);
       //sprintf(buff, sending);
   
 //      if (radio.sendWithRetry(GATEWAYID, sending, 5))
 //       Serial.print(" ok!");
 //      else Serial.print(" nothing...");
-      radio.send(GATEWAYID, sending, 7, 0);
+//      radio.send(GATEWAYID, sending, 7, 0);
     }
-    sendSize = (sendSize + 1) % 7;
-    Serial.println();
-    Blink(LED,3);
+    //sendSize = (sendSize + 1) % 7;
+    //Serial.println();
+    //Blink(LED,3);
   }
 }
 
