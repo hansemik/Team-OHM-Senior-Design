@@ -37,17 +37,17 @@ char replybuffer[255];
 // We default to using software serial. If you want to use hardware serial
 // (because softserial isnt supported) comment out the following three lines 
 // and uncomment the HardwareSerial line
-#include <SoftwareSerial.h>
-SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
-SoftwareSerial *fonaSerial = &fonaSS;
+//#include <SoftwareSerial.h>
+//SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
+//SoftwareSerial *fonaSerial = &fonaSS;
 
 // Hardware serial is also possible!
-//  HardwareSerial *fonaSerial = &Serial1;
+  HardwareSerial *fonaSerial = &Serial;
 
 // Use this for FONA 800 and 808s
-Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
+//Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
 // Use this one for FONA 3G
-//Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
+Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
 

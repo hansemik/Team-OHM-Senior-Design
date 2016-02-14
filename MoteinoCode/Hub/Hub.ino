@@ -13,6 +13,7 @@
 #include <QuikEval_EEPROM.h>
 #include <LT_SPI.h>
 #include "Adafruit_FONA.h"
+#include <string.h>
 
 //*********************************************************************************************
 //************ IMPORTANT SETTINGS - YOU MUST CHANGE/CONFIGURE TO FIT YOUR HARDWARE *************
@@ -57,12 +58,12 @@ bool promiscuousMode = false; //set to 'true' to sniff all packets on the same n
 // We default to using software serial. If you want to use hardware serial
 // (because softserial isnt supported) comment out the following three lines 
 // and uncomment the HardwareSerial line
-//#include <SoftwareSerial.h>
 //SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
+//#include <SoftwareSerial.h>
 //SoftwareSerial *fonaSerial = &fonaSS;
 
 // Hardware serial is also possible!
-  HardwareSerial *fonaSerial = &Serial1;
+  HardwareSerial *fonaSerial = &Serial;
 
 // Use this one for FONA 3G
 Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
@@ -391,22 +392,22 @@ void loop() {
     for (byte i = 0; i < radio.DATALEN; i++)
     
       Serial.print((char)radio.DATA[i]);
-    if(radio.DATA == (s) "TEXT"){
+    if(radio.DATA[0] == 'T'){
         char sendto[21], message[141];
         flushSerial();
-        Serial.print(F("Send to #"));
-        readline(sendto, 20);
+        //Serial.print(F("Send to #"));
+        //readline(sendto, 20);
+        strcpy(sendto,"9715064940");
         Serial.println(sendto);
-        Serial.print(F("Type out one-line message (140 char): "));
-        readline(message, 140);
+        //Serial.print(F("Type out one-line message (140 char): "));
+        //readline(message, 140);
+        strcpy(message,"Testing.");
         Serial.println(message);
         if (!fona.sendSMS(sendto, message)) {
           Serial.println(F("Failed"));
         } else {
           Serial.println(F("Sent!"));
         }
-
-        break;
     }
       //Serial.print(" ");
       //Serial.print((char)radio.DATA[i]);
