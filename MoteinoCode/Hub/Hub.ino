@@ -57,9 +57,13 @@ bool promiscuousMode = false; //set to 'true' to sniff all packets on the same n
 // We default to using software serial. If you want to use hardware serial
 // (because softserial isnt supported) comment out the following three lines 
 // and uncomment the HardwareSerial line
-#include <SoftwareSerial.h>
-SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
-SoftwareSerial *fonaSerial = &fonaSS;
+//#include <SoftwareSerial.h>
+//SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
+//SoftwareSerial *fonaSerial = &fonaSS;
+
+// Hardware serial is also possible!
+  HardwareSerial *fonaSerial = &Serial1;
+
 // Use this one for FONA 3G
 Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
