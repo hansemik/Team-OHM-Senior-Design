@@ -387,6 +387,23 @@ void loop() {
     for (byte i = 0; i < radio.DATALEN; i++)
     
       Serial.print((char)radio.DATA[i]);
+    if(radio.DATA == (s) "TEXT"){
+        char sendto[21], message[141];
+        flushSerial();
+        Serial.print(F("Send to #"));
+        readline(sendto, 20);
+        Serial.println(sendto);
+        Serial.print(F("Type out one-line message (140 char): "));
+        readline(message, 140);
+        Serial.println(message);
+        if (!fona.sendSMS(sendto, message)) {
+          Serial.println(F("Failed"));
+        } else {
+          Serial.println(F("Sent!"));
+        }
+
+        break;
+    }
       //Serial.print(" ");
       //Serial.print((char)radio.DATA[i]);
     
