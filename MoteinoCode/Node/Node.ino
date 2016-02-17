@@ -46,6 +46,7 @@ char buff[20];
 byte sendSize=0;
 boolean requestACK = false;
 SPIFlash flash(FLASH_SS, 0xEF40); //EF40 for 8mbit  Windbond chip (W25X40CL)
+uint32_t addr = 0000;
 
 #ifdef ENABLE_ATC
   RFM69_ATC radio;
@@ -57,6 +58,7 @@ static uint8_t uni_bi_polar = LTC1867_UNIPOLAR_MODE;    //!< The LTC1867 unipola
 static float LTC1867_lsb = 6.25009537E-5;               //!< Ideal LSB voltage for a perfect part
 static int32_t LTC1867_offset_unipolar_code = 0;        //!< Ideal unipolar offset for a perfect part
 static int32_t LTC1867_offset_bipolar_code = 0;         //!< Ideal bipolar offset for a perfect part
+uint16_t ADCcode = 0;
 
 //! Lookup table to build the command for single-ended mode, input with respect to GND
 const uint8_t BUILD_COMMAND_SINGLE_ENDED[8] = {LTC1867_CH0, LTC1867_CH1, LTC1867_CH2, LTC1867_CH3,
@@ -108,14 +110,13 @@ long lastPeriod = 0;
 int voltage = 0;
 //int A_pin = 0
 
-String input = "";
 void loop() {
   float adc_voltage;
   uint8_t user_command;
   uint8_t adc_command;                             // The LTC1867 command byte
   uint16_t adc_code = 0;                           // The LTC1867 code
 
-  
+    Blink(LED,3);  
   //pinMode(LTC1867L_SS, OUTPUT);
   //SPI.begin();
   //quikeval_SPI_init();
@@ -141,7 +142,7 @@ void loop() {
   
   if (Serial.available() > 0)
   {
-    input = (String)Serial.readString();
+    char input = Serial.read();
 //    if (input >= 48 && input <= 57) //[0,9]
 //    {
 //      TRANSMITPERIOD = 100 * (input-48);
@@ -151,14 +152,14 @@ void loop() {
 //      Serial.println("ms\n");
 //    }
 
-    if (input == "r") //d=dump register values
-      radio.readAllRegs();
+    //if (input == 'r') //d=dump register values
+    //  radio.readAllRegs();
     //if (input == 'E') //E=enable encryption
     //  radio.encrypt(KEY);
     //if (input == 'e') //e=disable encryption
     //  radio.encrypt(null);
 
-    if (input == "d") //d=dump flash area
+    if (input == 'd') //d=dump flash area
     {
       Serial.println("Flash content:");
       uint16_t counter = 0;
@@ -171,36 +172,66 @@ void loop() {
       while(flash.busy());
       Serial.println();
     }
-    if (input == "e")
+    if (input == 'e')
     {
       Serial.print("Erasing Flash chip ... ");
       flash.chipErase();
       while(flash.busy());
       Serial.println("DONE");
     }
-    if (input == "i")
+    if (input == 'i')
     {
       Serial.print("DeviceID: ");
       word jedecid = flash.readDeviceId();
       Serial.println(jedecid, HEX);
     }
 
-    if (input == "a")
+    if (input == 'a')
     {
       //read adc values
       //todo: enable, get cpp and h files:LT_SPI
       
       menu_1_read_single_ended();
+      //char ID = itoa(NODEID);
+      char lo = ADCcode & 0xFF;
+      char lo1[2];
+      sprintf(lo1,"%x",lo);
+      char hi = ADCcode >> 8;
+      char hi1[2];
+      sprintf(hi1,"%x",hi);
+      char ID[1] = {' '};
+      itoa(NODEID,ID,10);
+      //char sending[] = {*ID, ' ', hi1[0],hi1[1], lo1[0],lo1[1]};
+      char val[5];
+      sprintf(val,"%x",ADCcode);
+      char sending[] = {*ID, ' ', val[0],val[1],val[2],val[3],val[4]};
+      
+      //strncpy(sending, *ID, 10-1);
+      //strncat(sending, ' ', 10 - strlen(sending)-1);
+      //strncat(sending, "\x"lo, 10 - strlen(sending)-1);
+      //strncat(sending, "\x"hi, 10 - strlen(sending)-1);
+      //char array[50];
+      //s.toCharArray(sending,5);
+      //sprintf(buff, sending);
+      Serial.println(ID);
+      Serial.println(hi,HEX);
+      Serial.println(lo,HEX);
+      Serial.println(val);
+      Serial.println(ADCcode);
+      Serial.println(sending);
+      radio.send(GATEWAYID, sending, 6, 0);
+
+      
       Serial.print("DONE");
     }
-    if (input == "s")
+    if (input == 's')
     {
       Serial.print("Set pin 7");
       //set pin 7
       pinMode(2, OUTPUT);
         digitalWrite(2, HIGH);
     }
-    if (input == "u")
+    if (input == 'u')
     {
       Serial.print("Un-set pin 7");
       //un-set pin 7
@@ -208,26 +239,34 @@ void loop() {
       digitalWrite(LTC1867L_SS, LOW);
     }
 
-    if (input == "TEXT")
+
+    if (input == 'w') 
     {
-    //send command
-    char sending[] = "TEXT";
-    //s.toCharArray(sending,5);
-    //sprintf(buff, sending);
-  
-    radio.send(GATEWAYID, sending, 4, 0);      
+      Serial.print("Enter string to save to flash chip:");
+      if (readline(buff, 6, 10000) > 0)
+      {
+        Serial.println();
+        Serial.print("Writing ");
+        Serial.print(buff);
+        Serial.println(" to flash memory.");
+        Serial.println(strlen(buff));
+
+        flash.writeBytes(addr, buff, strlen(buff));        
+        addr = addr + (uint32_t)strlen(buff);
+        Serial.println(addr);
+      }
     }
 
-    if (input == "WEBSITE")
+    if (input == 'r')
     {
-    //send text
-    char sending[] = "WEBSITE";
-    //s.toCharArray(sending,5);
-    //sprintf(buff, sending);
-  
-    radio.send(GATEWAYID, sending, 7, 0);      
+      flash.readBytes(addr - strlen(buff), buff, strlen(buff));
+      Serial.print("Read ");
+      Serial.print(buff);
+      Serial.print(" from flash.");
+      Serial.println();
     }
   }
+
 
   
 
@@ -248,46 +287,46 @@ void loop() {
     Serial.println();
   }
 
-  int currPeriod = millis()/TRANSMITPERIOD;
-  if (currPeriod != lastPeriod)
-  {
-    lastPeriod=currPeriod;
-
-    //Serial.println("Here");
-    //send FLASH id
-    if(sendSize==0)
-    {
-//      sprintf(buff, "FLASH_MEM_ID:0x%X", flash.readDeviceId());
-//      byte buffLen=strlen(buff);
-//      if (radio.sendWithRetry(GATEWAYID, buff, buffLen))
-//        Serial.print(" ok!");
-//      else Serial.print(" nothing...");
-//      //sendSize = (sendSize + 1) % 11;
-    }
-    else
-    {
-//      Serial.print("Sending[");
-//      Serial.print(sendSize);
-//      Serial.print("]: ");
-//      for(byte i = 0; i < sendSize; i++)
-//        Serial.print((char)payload[i]);
-
-      //char sending[] = itoa(voltage);
-
-      String s = String(adc_voltage);
-      char sending[] = "";
-      s.toCharArray(sending,5);
-      //sprintf(buff, sending);
-  
-//      if (radio.sendWithRetry(GATEWAYID, sending, 5))
-//       Serial.print(" ok!");
-//      else Serial.print(" nothing...");
-      radio.send(GATEWAYID, sending, 7, 0);
-    }
-    sendSize = (sendSize + 1) % 7;
-    Serial.println();
-    Blink(LED,3);
-  }
+//  int currPeriod = millis()/TRANSMITPERIOD;
+//  if (currPeriod != lastPeriod)
+//  {
+//    lastPeriod=currPeriod;
+//
+//    //Serial.println("Here");
+//    //send FLASH id
+//    if(sendSize==0)
+//    {
+////      sprintf(buff, "FLASH_MEM_ID:0x%X", flash.readDeviceId());
+////      byte buffLen=strlen(buff);
+////      if (radio.sendWithRetry(GATEWAYID, buff, buffLen))
+////        Serial.print(" ok!");
+////      else Serial.print(" nothing...");
+////      //sendSize = (sendSize + 1) % 11;
+//    }
+//    else
+//    {
+////      Serial.print("Sending[");
+////      Serial.print(sendSize);
+////      Serial.print("]: ");
+////      for(byte i = 0; i < sendSize; i++)
+////        Serial.print((char)payload[i]);
+//
+//      //char sending[] = itoa(voltage);
+//
+//      String s = String(adc_voltage);
+//      char sending[] = "";
+//      s.toCharArray(sending,5);
+//      //sprintf(buff, sending);
+//  
+////      if (radio.sendWithRetry(GATEWAYID, sending, 5))
+////       Serial.print(" ok!");
+////      else Serial.print(" nothing...");
+//      radio.send(GATEWAYID, sending, 7, 0);
+//    }
+//    sendSize = (sendSize + 1) % 7;
+//    Serial.println();
+//    Blink(LED,3);
+//  }
 }
 
 void Blink(byte PIN, int DELAY_MS)
@@ -373,6 +412,7 @@ void menu_1_read_single_ended()
       LTC1867_read(LTC1867L_SS, adc_command, &adc_code); // Throws out last reading
       delay(100);
       LTC1867_read(LTC1867L_SS, adc_command, &adc_code);
+      ADCcode = adc_code;
       Serial.print(F("Received Code: 0x"));
       Serial.println(adc_code, HEX);
 
