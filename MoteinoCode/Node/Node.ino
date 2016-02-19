@@ -226,17 +226,21 @@ void loop() {
     }
     if (input == 's')
     {
-      Serial.print("Set pin 7");
+      Serial.print("Set pin 17");
       //set pin 7
-      pinMode(2, OUTPUT);
-        digitalWrite(2, HIGH);
+      pinMode(16, OUTPUT);
+      digitalWrite(16, HIGH);
+      pinMode(17, OUTPUT);
+      digitalWrite(17, HIGH);
     }
     if (input == 'u')
     {
-      Serial.print("Un-set pin 7");
+      Serial.print("Un-set pin 17");
       //un-set pin 7
-      pinMode(LTC1867L_SS, OUTPUT);
-      digitalWrite(LTC1867L_SS, LOW);
+      pinMode(16, OUTPUT);
+      digitalWrite(16, LOW);
+      pinMode(17, OUTPUT);
+      digitalWrite(17, LOW);
     }
 
 
