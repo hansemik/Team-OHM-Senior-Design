@@ -74,6 +74,11 @@ uint32_t BLOCK13 = 0x0D0000;
 uint32_t BLOCK14 = 0x0E0000;
 uint32_t BLOCK15 = 0x0F0000;
 
+uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
+                        &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
+                        &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
+                        &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
+
 uint16_t block0pos = 0;
 uint16_t block1pos = 0;
 uint16_t block2pos = 0;
@@ -91,6 +96,15 @@ uint16_t block13pos = 0;
 uint16_t block14pos = 0;
 uint16_t block15pos = 0;
 
+
+uint16_t *blockPos[16] = {&block0pos,&block1pos,&block2pos,&block3pos,
+                          &block4pos,&block5pos,&block6pos,&block7pos,
+                          &block8pos,&block9pos,&block10pos,&block11pos,
+                          &block12pos,&block13pos,&block14pos,&block15pos};
+
+uint16_t currBlockMax = 0;
+
+
 //Each Sector is 4KB (Each channel gets 8KB)
 // 8KB / 2B per ADC read = 4000 reads possible
 uint16_t CH0_pos = 0x0000; //Sector 0 & 1
@@ -101,6 +115,9 @@ uint16_t CH4_pos = 0x8000; //Sector 8 & 9
 uint16_t CH5_pos = 0xA000; //Sector 10 & 11
 uint16_t CH6_pos = 0xC000; //Sector 12 & 13
 uint16_t CH7_pos = 0xE000; //Sector 14 & 15
+
+uint16_t *CHNpos[16] = {&CH0_pos,&CH1_pos,&CH2_pos,&CH3_pos,
+                        &CH4_pos,&CH5_pos,&CH6_pos,&CH7_pos};
 
 SPIFlash flash(FLASH_SS, 0xEF40); //EF30 for 8mbit  Windbond chip (W25X40CL)
 bool promiscuousMode = false; //set to 'true' to sniff all packets on the same network
@@ -148,6 +165,8 @@ void setup() {
 Node_IDs[0] = 02;
 }
 
+
+int i,j = 0;
 byte ackCount=0;
 uint32_t packetCount = 0;
 void loop() {
@@ -280,12 +299,51 @@ void loop() {
 
       while(1)
       {
+        Serial.println("Hello?");
         if (radio.receiveDone())
         {
-          if (ID == idParser() && atoi(cmd,10) == cmdParser)
+          Serial.println(idParser());
+          Serial.println(atoi(ID));
+          Serial.println(cmdParser());
+          Serial.println(atoi(cmd));
+          if (atoi(ID) == idParser() && atoi(cmd) == cmdParser())
           {
             //Store data
             //Todo: create parser based on spaces, then write to flash
+            //int space_pos = valParser(space_pos, radio.DATA); // ID(0), ID(1), CMD(2), Space(3), Val(4)
+            char data[radio.DATALEN];
+            //sprintf(data, "%x", (char)radio.DATA);
+            Serial.print("Data: ");
+            Serial.println(data);
+            for (j = 0; j < radio.DATALEN; j++)
+            {
+              data[j] = (char)radio.DATA[j];
+            }
+            Serial.print("Data: ");
+            Serial.println(data);
+//            for (j = 0; j < strlen(radio.DATA); j++)
+//            {
+//              Serial.print(radio.DATA[j]);
+//            }
+            Serial.println();
+            char write_data[4];
+            j = 0;
+            for (i = 4; i < strlen(data); i++)
+            {
+              if (radio.DATA[i] != ' ')
+              {
+                write_data[j] = data[i];
+                j++; 
+              }
+              else
+              {
+                j = 0;
+                flash.writeBytes(*BLOCKS[0] + CH0_pos, write_data, strlen(write_data));
+                CH0_pos = CH0_pos + strlen(write_data);
+                write_data[0] = write_data[1] = write_data[2] = write_data[3] = '\0';                
+              }
+            }
+            break;
           }
           else
           {
@@ -456,6 +514,23 @@ int cmdParser()
 {
   char cmd[] = {(char)radio.DATA[2]};
   return atoi(cmd);
+}
+
+int valParser(int start, char* str)
+{
+  for (int a = start; a < strlen(str); a++)
+  {
+    if(str[a] == ' ')
+    {
+      //found space, return pos of char after space
+      return a;
+    }
+    else 
+    {
+      //Did not find space, so nothing more to parse
+      return -1;
+    }
+  }
 }
 
 void resetFlashAddr()

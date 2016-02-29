@@ -88,39 +88,44 @@ uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
                         &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
                         &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
                         &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
+//
+//uint16_t block0pos = 0;
+//uint16_t block1pos = 0;
+//uint16_t block2pos = 0;
+//uint16_t block3pos = 0;
+//uint16_t block4pos = 0;
+//uint16_t block5pos = 0;
+//uint16_t block6pos = 0;
+//uint16_t block7pos = 0;
+//uint16_t block8pos = 0;
+//uint16_t block9pos = 0;
+//uint16_t block10pos = 0;
+//uint16_t block11pos = 0;
+//uint16_t block12pos = 0;
+//uint16_t block13pos = 0;
+//uint16_t block14pos = 0;
+//uint16_t block15pos = 0;
+//
+////Pos 0 in array is 0th block pos
+//uint16_t blockPos[16] = {&block0pos,&block1pos,&block2pos,&block3pos,
+//                          &block4pos,&block5pos,&block6pos,&block7pos,
+//                          &block8pos,&block9pos,&block10pos,&block11pos,
+//                          &block12pos,&block13pos,&block14pos,&block15pos};
+//
 
-uint16_t block0pos = 0;
-uint16_t block1pos = 0;
-uint16_t block2pos = 0;
-uint16_t block3pos = 0;
-uint16_t block4pos = 0;
-uint16_t block5pos = 0;
-uint16_t block6pos = 0;
-uint16_t block7pos = 0;
-uint16_t block8pos = 0;
-uint16_t block9pos = 0;
-uint16_t block10pos = 0;
-uint16_t block11pos = 0;
-uint16_t block12pos = 0;
-uint16_t block13pos = 0;
-uint16_t block14pos = 0;
-uint16_t block15pos = 0;
-
-uint16_t *blockPos[16] = {&block0pos,&block1pos,&block2pos,&block3pos,
-                          &block4pos,&block5pos,&block6pos,&block7pos,
-                          &block8pos,&block9pos,&block10pos,&block11pos,
-                          &block12pos,&block13pos,&block14pos,&block15pos};
+//Pos 0 in array is 0th block pos
+uint16_t blockPos[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 uint16_t currBlockMax = 0;
 
 #define CH0  0
-#define CH1  1
-#define CH2  2
-#define CH3  3
-#define CH4  4
-#define CH5  5
-#define CH6  6
-#define CH7  7
+//#define CH1  1
+//#define CH2  2
+//#define CH3  3
+//#define CH4  4
+//#define CH5  5
+//#define CH6  6
+//#define CH7  7
 
 
 #ifdef ENABLE_ATC
@@ -260,7 +265,7 @@ void loop() {
 
       Serial.print("0-256: ");
       while(counter<=256){
-        Serial.print(flash.readByte(BLOCK1 +(counter++)), HEX);
+        Serial.print(flash.readByte(BLOCK0 +(counter++)), HEX);
         Serial.print('.');
       }
       while(flash.busy());
@@ -339,21 +344,21 @@ void loop() {
       {
         //block0pos = 47288;
         //cmd 1 Send readystatus
-        Serial.println(block0pos);
-        block0pos = block0pos + 1;
+        Serial.println(blockPos[0]);
+        blockPos[0] = blockPos[0] + 1;
 
-        Serial.println(*blockPos[0]);
-        *blockPos[0] = *blockPos[0] + 1;
+        Serial.println(blockPos[0]);
+        blockPos[0] = blockPos[0] + 1;
 
       }
 
       if (cmd == 2)
       {
-        currBlockMax = block0pos;
+        currBlockMax = blockPos[0];
         //block0pos = 0;
         //cmd 2 Send data
         resetFlashAddr();
-        char cmd_char[] = " ";
+        char cmd_char[10];
         itoa(cmd, cmd_char, 10);
         char sending[] = " ";
         char ID[2] = {' ', ' '};
@@ -365,33 +370,46 @@ void loop() {
           strcpy(sending,zero);
           strcat(sending,ID);
           strcat(sending,cmd_char);
+          Serial.println(cmd_char);
         }
         else if (strlen(ID) == 2)
         {
           strcpy(sending,ID);
           strcat(sending,cmd_char);
         }
+        
         char space[] = " ";
         char code[] = " ";
+        uint32_t p;
+        uint32_t p1;
+        byte d;
         for (i = 0; i < 8; i++)
         {
           strcat(sending," ");
+          Serial.println();
+          Serial.println();
+          Serial.print("Pos within Block: ");
+          Serial.println(blockPos[0]);
+          
           //itoa(flash.readByte(*BLOCKS[0] + *blockPos[0]),code,16);
-          uint16_t p = *BLOCKS[0] + *blockPos[0];
-          uint16_t p1 = *blockPos[0];
-          itoa(flash.readByte(p),code,16);
+          p = blockPos[0];
+          p1 = blockPos[0];
+          d = flash.readByte(p);
+          sprintf(code, "%x", d);
           Serial.print("Read flash: ");
-          Serial.println(flash.readByte(p));
+          Serial.println(d);
           Serial.print("code: ");
           Serial.println(code);
 
           Serial.print("Pos: ");
           Serial.println(p);
+          Serial.print("Pos within Block: ");
+          Serial.println(blockPos[0]);
           Serial.print("Block Pos: ");
-          Serial.println(p1);
-          //*blockPos[0] = (*blockPos[0]) + 1;
+          Serial.println(*BLOCKS[0]);
+          blockPos[0] = (blockPos[0]) + 1;
           //block0pos = block0pos + 1;
-          (*blockPos[0])++;
+          //(*blockPos[0])++;
           
           strcat(sending,code);
         }
@@ -489,11 +507,13 @@ void writeADCtoFlash()
   char val[4];
 #ifdef CH0
   sprintf(val, "%x", ADCcode[CH0]);
-  flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
+  //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
+  flash.writeBytes(BLOCK0 + blockPos[0], val, strlen(val));
+  Serial.println(BLOCK0 + blockPos[0]);
+  //block0pos = block0pos + strlen(val);
+  blockPos[0] = blockPos[0] + strlen(val);
   //Serial.println(block0pos);
-  block0pos = block0pos + strlen(val);
-  //Serial.println(block0pos);
-  //Serial.println(val);
+  Serial.println(val);
   //Serial.println(ADCcode[CH0]);
 #endif
 
@@ -543,22 +563,24 @@ void writeADCtoFlash()
 
 void resetFlashAddr()
 {
-  block0pos = 0;
-  block1pos = 0;
-  block2pos = 0;
-  block3pos = 0;
-  block4pos = 0;
-  block5pos = 0;
-  block6pos = 0;
-  block7pos = 0;
-  block8pos = 0;
-  block9pos = 0;
-  block10pos = 0;
-  block11pos = 0;
-  block12pos = 0;
-  block13pos = 0;
-  block14pos = 0;
-  block15pos = 0;
+  for (int i = 0; i < 16; i++)
+    blockPos[i] = 0;
+//  block0pos = 0;
+//  block1pos = 0;
+//  block2pos = 0;
+//  block3pos = 0;
+//  block4pos = 0;
+//  block5pos = 0;
+//  block6pos = 0;
+//  block7pos = 0;
+//  block8pos = 0;
+//  block9pos = 0;
+//  block10pos = 0;
+//  block11pos = 0;
+//  block12pos = 0;
+//  block13pos = 0;
+//  block14pos = 0;
+//  block15pos = 0;
 }
 
 void flushSerial() {
