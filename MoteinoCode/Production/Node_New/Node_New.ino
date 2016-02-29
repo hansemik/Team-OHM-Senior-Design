@@ -19,7 +19,7 @@
 //*********************************************************************************************
 #define NODEID        02    //must be unique for each node on same network (range up to 254, 255 is used for broadcast)
 #define NETWORKID     100  //the same on all nodes that talk to each other (range up to 255)
-#define GATEWAYID     1
+#define GATEWAYID     00
 //Match frequency to the hardware version of the radio on your Moteino (uncomment one):
 //#define FREQUENCY   RF69_433MHZ
 //#define FREQUENCY   RF69_868MHZ
@@ -41,8 +41,9 @@
 #define SERIAL_BAUD     115200
 
 #define SAMPLE_FREQ     10 //(in milliseconds)
-#define SAMPLE_TIME     30 //(in seconds)
+#define SAMPLE_TIME     5 //(in seconds)
 #define NUM_SAMPLES     ( 1000 / SAMPLE_FREQ * SAMPLE_TIME )
+int samples_taken = 0;
 
 int TRANSMITPERIOD = 10; //transmit a packet to gateway so often (in ms)
 char payload[] = "1234";
@@ -50,7 +51,9 @@ char buff[20];
 byte sendSize=0;
 boolean requestACK = false;
 SPIFlash flash(FLASH_SS, 0xEF40); //EF40 for 8mbit  Windbond chip (W25X40CL)
+bool promiscuousMode = true; //set to 'true' to sniff all packets on the same network
 uint32_t addr = 0000;
+char HUB_ID[] = "00";
 
 unsigned long time1;
 unsigned long time2;
@@ -81,6 +84,11 @@ uint32_t BLOCK13 = 0x0D0000;
 uint32_t BLOCK14 = 0x0E0000;
 uint32_t BLOCK15 = 0x0F0000;
 
+uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
+                        &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
+                        &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
+                        &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
+
 uint16_t block0pos = 0;
 uint16_t block1pos = 0;
 uint16_t block2pos = 0;
@@ -97,6 +105,13 @@ uint16_t block12pos = 0;
 uint16_t block13pos = 0;
 uint16_t block14pos = 0;
 uint16_t block15pos = 0;
+
+uint16_t *blockPos[16] = {&block0pos,&block1pos,&block2pos,&block3pos,
+                          &block4pos,&block5pos,&block6pos,&block7pos,
+                          &block8pos,&block9pos,&block10pos,&block11pos,
+                          &block12pos,&block13pos,&block14pos,&block15pos};
+
+uint16_t currBlockMax = 0;
 
 #define CH0  0
 #define CH1  1
@@ -133,6 +148,7 @@ void setup() {
   radio.setHighPower(); //uncomment only for RFM69HW!
 #endif
   radio.encrypt(ENCRYPTKEY);
+  radio.promiscuous(promiscuousMode);
   //radio.setFrequency(919000000); //set frequency to some custom frequency
   
 //Auto Transmission Control - dials down transmit power to save battery (-100 is the noise floor, -90 is still pretty good)
@@ -143,9 +159,10 @@ void setup() {
   radio.enableAutoPower(-70);
 #endif
   
-  char buff[50];
-  sprintf(buff, "\nTransmitting at %d Mhz...", FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
-  Serial.println(buff);
+  //char buff[50];
+  //sprintf(buff, "\nTransmitting at %d Mhz...", FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
+  //Serial.println(buff);
+  Serial.println("Node radio init");
   
   if (flash.initialize())
   {
@@ -164,8 +181,6 @@ void setup() {
 #ifdef ENABLE_ATC
   Serial.println("RFM69_ATC Enabled (Auto Transmission Control)\n");
 #endif
-
-setTimer1();
 }
 
 long lastPeriod = 0;
@@ -229,8 +244,8 @@ void loop() {
       Serial.println("Flash content:");
       uint16_t counter = 0;
 
-      Serial.print("0-256: ");
-      while(counter<=256){
+      Serial.print("0-6000: ");
+      while(counter<=6000){
         Serial.print(flash.readByte(counter++), HEX);
         Serial.print('.');
       }
@@ -238,7 +253,7 @@ void loop() {
       Serial.println();
     }
     
-    if (input == '1') //d=dump flash area
+    if (input == '0') //d=dump flash area
     {
       Serial.println("Flash content:");
       uint16_t counter = 0;
@@ -300,12 +315,126 @@ void loop() {
   //check for any received packets
   if (radio.receiveDone())
   {
-    println(idParser());
-//    Serial.print('[');Serial.print(radio.SENDERID, DEC);Serial.print("] ");
-//    for (byte i = 0; i < radio.DATALEN; i++)
-//      Serial.print((char)radio.DATA[i]);
-//    Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
-//
+    Serial.println(idParser());
+    Serial.println(cmdParser());
+    Serial.print('[');Serial.print(radio.SENDERID, DEC);Serial.print("] ");
+    for (byte i = 0; i < radio.DATALEN; i++)
+      Serial.print((char)radio.DATA[i]);
+    Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
+
+    Serial.println();
+
+    int ID = idParser();
+    if (ID == 99 || ID == NODEID)
+    {
+      Serial.println("Initiate cmd");
+
+      int cmd = cmdParser();
+      if (cmd == 0)
+      {
+        //cmd 0 Send back packet immediately (Delay computation)
+      }
+
+      if (cmd == 1)
+      {
+        //block0pos = 47288;
+        //cmd 1 Send readystatus
+        Serial.println(block0pos);
+        block0pos = block0pos + 1;
+
+        Serial.println(*blockPos[0]);
+        *blockPos[0] = *blockPos[0] + 1;
+
+      }
+
+      if (cmd == 2)
+      {
+        currBlockMax = block0pos;
+        //block0pos = 0;
+        //cmd 2 Send data
+        resetFlashAddr();
+        char cmd_char[] = " ";
+        itoa(cmd, cmd_char, 10);
+        char sending[] = " ";
+        char ID[2] = {' ', ' '};
+        itoa(NODEID, ID, 10);
+        if (strlen(ID) == 1)
+        {
+          Serial.println("here");
+          char zero[] = "0";
+          strcpy(sending,zero);
+          strcat(sending,ID);
+          strcat(sending,cmd_char);
+        }
+        else if (strlen(ID) == 2)
+        {
+          strcpy(sending,ID);
+          strcat(sending,cmd_char);
+        }
+        char space[] = " ";
+        char code[] = " ";
+        for (i = 0; i < 8; i++)
+        {
+          strcat(sending," ");
+          //itoa(flash.readByte(*BLOCKS[0] + *blockPos[0]),code,16);
+          uint16_t p = *BLOCKS[0] + *blockPos[0];
+          uint16_t p1 = *blockPos[0];
+          itoa(flash.readByte(p),code,16);
+          Serial.print("Read flash: ");
+          Serial.println(flash.readByte(p));
+          Serial.print("code: ");
+          Serial.println(code);
+
+          Serial.print("Pos: ");
+          Serial.println(p);
+          Serial.print("Block Pos: ");
+          Serial.println(p1);
+          //*blockPos[0] = (*blockPos[0]) + 1;
+          //block0pos = block0pos + 1;
+          (*blockPos[0])++;
+          
+          strcat(sending,code);
+        }
+
+        Serial.println(sending);
+        radio.sendWithRetry(GATEWAYID, sending, strlen(sending));
+        
+        
+      }
+
+      if (cmd == 3)
+      {
+        //cmd3 Start data capture
+        setTimer1();
+        resetFlashAddr();
+        Serial.print("NUM_SAMPLES: ");
+        Serial.println(NUM_SAMPLES);
+        while (samples_taken < NUM_SAMPLES)
+        {
+          if (timer_rdy)
+          {
+            Serial.print("time diff: ");
+            Serial.println(diff);
+            
+            Serial.print("samples_taken: ");
+            Serial.println(samples_taken);
+            timer_rdy = 0;     
+               
+            readADC();
+            Serial.println("Read Complete");
+            writeADCtoFlash();
+            Serial.println("Write Complete");
+            samples_taken ++;
+          }
+          Serial.println("Im stuck");
+        }
+        Serial.println("Unset timer");
+        unsetTimer1();
+        samples_taken = 0;        
+      }
+    
+    }
+
 //    if (radio.ACKRequested())
 //    {
 //      radio.sendACK();
@@ -345,17 +474,27 @@ void Blink(byte PIN, int DELAY_MS)
   digitalWrite(PIN,LOW);
 }
 
+void readADC()
+{
+  for (i = 0; i <= 7; i++)
+  {
+    adc_command = BUILD_COMMAND_SINGLE_ENDED[0] | uni_bi_polar;   // Build ADC command for channel 0
+    LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Throws out last reading
+    LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Takes reading
+  }
+}
+
 void writeADCtoFlash()
 {
   char val[4];
 #ifdef CH0
   sprintf(val, "%x", ADCcode[CH0]);
   flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
-  Serial.println(block0pos);
+  //Serial.println(block0pos);
   block0pos = block0pos + strlen(val);
-  Serial.println(block0pos);
-  Serial.println(val);
-  Serial.println(ADCcode[CH0]);
+  //Serial.println(block0pos);
+  //Serial.println(val);
+  //Serial.println(ADCcode[CH0]);
 #endif
 
 #ifdef CH1
@@ -399,6 +538,27 @@ void writeADCtoFlash()
   flash.writeBytes(BLOCK7 + block2pos, val, strlen(val));
   block7pos = block7pos + strlen(val);
 #endif
+}
+
+
+void resetFlashAddr()
+{
+  block0pos = 0;
+  block1pos = 0;
+  block2pos = 0;
+  block3pos = 0;
+  block4pos = 0;
+  block5pos = 0;
+  block6pos = 0;
+  block7pos = 0;
+  block8pos = 0;
+  block9pos = 0;
+  block10pos = 0;
+  block11pos = 0;
+  block12pos = 0;
+  block13pos = 0;
+  block14pos = 0;
+  block15pos = 0;
 }
 
 void flushSerial() {
@@ -458,15 +618,20 @@ void unsetTimer1()
 //Returns value of ID in command string
 int idParser()
 {
-  for (byte i = 0; i < radio.DATALEN; i++)
-    Serial.print((char)radio.DATA[i]);
-  Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
+//  for (byte i = 0; i < radio.DATALEN; i++)
+//    Serial.print((char)radio.DATA[i]);
+//  Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
 
   //ID is first two bytes in DATA array
   char ID[] = {(char)radio.DATA[0],(char)radio.DATA[1]};
   return atoi(ID);
 }
 
+int cmdParser()
+{
+  char cmd[] = {(char)radio.DATA[2]};
+  return atoi(cmd);
+}
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
   uint16_t buffidx = 0;
   boolean timeoutvalid = true;

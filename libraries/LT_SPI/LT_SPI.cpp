@@ -112,7 +112,6 @@ void spi_transfer_word(uint8_t cs_pin, uint16_t tx, uint16_t *rx)
   data_tx.w = tx;
 
   output_low(cs_pin);                         //! 1) Pull CS 
-  Serial.println(cs_pin);
 
   data_rx.b[1] = SPI.transfer(data_tx.b[1]);  //! 2) Read MSB and send MSB
   data_rx.b[0] = SPI.transfer(data_tx.b[0]);  //! 3) Read LSB and send LSB

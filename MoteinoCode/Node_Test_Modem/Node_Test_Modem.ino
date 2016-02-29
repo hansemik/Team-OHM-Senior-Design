@@ -44,7 +44,10 @@ char payload[] = "1234";
 char buff[20];
 byte sendSize=0;
 boolean requestACK = false;
+uint16_t ADCcode = 0;
+
 SPIFlash flash(FLASH_SS, 0xEF40); //EF40 for 8mbit  Windbond chip (W25X40CL)
+uint32_t addr = 0000;
 
 #ifdef ENABLE_ATC
   RFM69_ATC radio;
@@ -114,6 +117,7 @@ void loop() {
   uint8_t adc_command;                             // The LTC1867 command byte
   uint16_t adc_code = 0;                           // The LTC1867 code
 
+  Blink(LED,3);
   
   //pinMode(LTC1867L_SS, OUTPUT);
   //SPI.begin();
@@ -150,8 +154,8 @@ void loop() {
       Serial.println("ms\n");
     }
 
-    if (input == 'r') //d=dump register values
-      radio.readAllRegs();
+    //if (input == 'r') //d=dump register values
+    //  radio.readAllRegs();
     //if (input == 'E') //E=enable encryption
     //  radio.encrypt(KEY);
     //if (input == 'e') //e=disable encryption
@@ -183,7 +187,7 @@ void loop() {
       word jedecid = flash.readDeviceId();
       Serial.println(jedecid, HEX);
     }
-  }
+  
 
 
     if (input == 'a')
@@ -192,6 +196,36 @@ void loop() {
       //todo: enable, get cpp and h files:LT_SPI
       
       menu_1_read_single_ended();
+      //char ID = itoa(NODEID);
+      char lo = ADCcode & 0xFF;
+      char lo1[2];
+      sprintf(lo1,"%x",lo);
+      char hi = ADCcode >> 8;
+      char hi1[2];
+      sprintf(hi1,"%x",hi);
+      char ID[1] = {' '};
+      itoa(NODEID,ID,10);
+      //char sending[] = {*ID, ' ', hi1[0],hi1[1], lo1[0],lo1[1]};
+      char val[5];
+      sprintf(val,"%x",ADCcode);
+      char sending[] = {*ID, ' ', val[0],val[1],val[2],val[3],val[4]};
+      
+      //strncpy(sending, *ID, 10-1);
+      //strncat(sending, ' ', 10 - strlen(sending)-1);
+      //strncat(sending, "\x"lo, 10 - strlen(sending)-1);
+      //strncat(sending, "\x"hi, 10 - strlen(sending)-1);
+      //char array[50];
+      //s.toCharArray(sending,5);
+      //sprintf(buff, sending);
+      Serial.println(ID);
+      Serial.println(hi,HEX);
+      Serial.println(lo,HEX);
+      Serial.println(val);
+      Serial.println(ADCcode);
+      Serial.println(sending);
+      radio.send(GATEWAYID, sending, 6, 0);
+
+      
       Serial.print("DONE");
     }
     if (input == 's')
@@ -228,6 +262,33 @@ void loop() {
     radio.send(GATEWAYID, sending, 1, 0);  
     Serial.println(sending);
     }
+
+    if (input == 'w') 
+    {
+      Serial.print("Enter string to save to flash chip:");
+      if (readline(buff, 6, 10000) > 0)
+      {
+        Serial.println();
+        Serial.print("Writing ");
+        Serial.print(buff);
+        Serial.println(" to flash memory.");
+        Serial.println(strlen(buff));
+
+        flash.writeBytes(addr, buff, strlen(buff));        
+        addr = addr + (uint32_t)strlen(buff);
+        Serial.println(addr);
+      }
+    }
+
+    if (input == 'r')
+    {
+      flash.readBytes(addr - strlen(buff), buff, strlen(buff));
+      Serial.print("Read ");
+      Serial.print(buff);
+      Serial.print(" from flash.");
+      Serial.println();
+    }
+  }
 
   //check for any received packets
   if (radio.receiveDone())
@@ -550,4 +611,46 @@ uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
   buff[buffidx] = 0;  // null term
   return buffidx;
 }
+
+
+uint8_t my_readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
+  uint16_t buffidx = 0;
+  boolean timeoutvalid = true;
+  if (timeout == 0) timeoutvalid = false;
+
+  while (true) {
+    if (buffidx > maxbuff) {
+      //Serial.println(F("SPACE"));
+      break;
+    }
+
+    while (Serial.available()) {
+      char c =  Serial.read();
+
+      //Serial.print(c, HEX); Serial.print("#"); Serial.println(c);
+
+      if (c == '\r') continue;
+      if (c== '\n') break;
+      if (c == 0xA) {
+        if (buffidx == 0)   // the first 0x0A is ignored
+          continue;
+
+        timeout = 0;         // the second 0x0A is the end of the line
+        timeoutvalid = true;
+        break;
+      }
+      buff[buffidx] = c;
+      buffidx++;
+    }
+
+    if (timeoutvalid && timeout == 0) {
+      //Serial.println(F("TIMEOUT"));
+      break;
+    }
+    delay(1);
+  }
+  buff[buffidx] = 0;  // null term
+  return buffidx;
+}
+
 

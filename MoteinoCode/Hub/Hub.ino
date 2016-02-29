@@ -63,10 +63,10 @@ bool promiscuousMode = false; //set to 'true' to sniff all packets on the same n
 //SoftwareSerial *fonaSerial = &fonaSS;
 
 // Hardware serial is also possible!
-  HardwareSerial *fonaSerial = &Serial;
+//  HardwareSerial *fonaSerial = &Serial;
 
 // Use this one for FONA 3G
-Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
+//Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
 
@@ -120,45 +120,45 @@ void setup() {
   Serial.println("RFM69_ATC Enabled (Auto Transmission Control)");
 #endif
 
-  fonaSerial->begin(115200);
-  if (! fona.begin(*fonaSerial)) {
-    Serial.println(F("Couldn't find FONA"));
-    while (1);
-  }
-  Serial.println(F("Hello?"));
-  type = fona.type();
-  Serial.println(F("FONA is OK"));
-  Serial.print(F("Found "));
-  switch (type) {
-    case FONA800L:
-      Serial.println(F("FONA 800L")); break;
-    case FONA800H:
-      Serial.println(F("FONA 800H")); break;
-    case FONA808_V1:
-      Serial.println(F("FONA 808 (v1)")); break;
-    case FONA808_V2:
-      Serial.println(F("FONA 808 (v2)")); break;
-    case FONA3G_A:
-      Serial.println(F("FONA 3G (American)")); break;
-    case FONA3G_E:
-      Serial.println(F("FONA 3G (European)")); break;
-    default: 
-      Serial.println(F("???")); break;
-  }
-  
-  // Print module IMEI number.
-  char imei[15] = {0}; // MUST use a 16 character buffer for IMEI!
-  uint8_t imeiLen = fona.getIMEI(imei);
-  if (imeiLen > 0) {
-    Serial.print("Module IMEI: "); Serial.println(imei);
-  }
+  //fonaSerial->begin(115200);
+  //if (! fona.begin(*fonaSerial)) {
+  //  Serial.println(F("Couldn't find FONA"));
+  //  while (1);
+  //}
+//  Serial.println(F("Hello?"));
+//  //type = fona.type();
+//  Serial.println(F("FONA is OK"));
+//  Serial.print(F("Found "));
+//  switch (type) {
+//    case FONA800L:
+//      Serial.println(F("FONA 800L")); break;
+//    case FONA800H:
+//      Serial.println(F("FONA 800H")); break;
+//    case FONA808_V1:
+//      Serial.println(F("FONA 808 (v1)")); break;
+//    case FONA808_V2:
+//      Serial.println(F("FONA 808 (v2)")); break;
+//    case FONA3G_A:
+//      Serial.println(F("FONA 3G (American)")); break;
+//    case FONA3G_E:
+//      Serial.println(F("FONA 3G (European)")); break;
+//    default: 
+//      Serial.println(F("???")); break;
+//  }
+//  
+//  // Print module IMEI number.
+//  char imei[15] = {0}; // MUST use a 16 character buffer for IMEI!
+//  uint8_t imeiLen = fona.getIMEI(imei);
+//  if (imeiLen > 0) {
+//    Serial.print("Module IMEI: "); Serial.println(imei);
+//  }
 
   // Optionally configure a GPRS APN, username, and password.
   // You might need to do this to access your network's GPRS/data
   // network.  Contact your provider for the exact APN, username,
   // and password values.  Username and password are optional and
   // can be removed, but APN is required.
-  fona.setGPRSNetworkSettings(F("wholesale"));
+  //fona.setGPRSNetworkSettings(F("wholesale"));
 
   // Optionally configure HTTP gets to follow redirects over SSL.
   // Default is not to follow SSL redirects, however if you uncomment
@@ -279,102 +279,102 @@ void loop() {
     }
 
     
-    if(input == 'g') {
-        // turn GPRS off
-        if (!fona.enableGPRS(false))
-          Serial.println(F("Failed to turn off"));
-      }
-    if(input == 'G') {
-        // turn GPRS on
-        if (!fona.enableGPRS(true))
-          Serial.println(F("Failed to turn on"));
-      }
-    if(input == 'l') {
-        // check for GSMLOC (requires GPRS)
-        uint16_t returncode;
-
-        if (!fona.getGSMLoc(&returncode, replybuffer, 250))
-          Serial.println(F("Failed!"));
-        if (returncode == 0) {
-          Serial.println(replybuffer);
-        } else {
-          Serial.print(F("Fail code #")); Serial.println(returncode);
-        }
-
-      }
-    if(input == 'w') {
-        // read website URL
-        uint16_t statuscode;
-        int16_t length;
-        char url[80];
-
-        flushSerial();
-        Serial.println(F("NOTE: in beta! Use small webpages to read!"));
-        Serial.println(F("URL to read (e.g. www.adafruit.com/testwifi/index.html):"));
-        Serial.print(F("http://")); readline(url, 79);
-        Serial.println(url);
-
-        Serial.println(F("****"));
-        if (!fona.HTTP_GET_start(url, &statuscode, (uint16_t *)&length)) {
-          Serial.println("Failed!");
-        }
-        while (length > 0) {
-          while (fona.available()) {
-            char c = fona.read();
-
-            // Serial.write is too slow, we'll write directly to Serial register!
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-            loop_until_bit_is_set(UCSR0A, UDRE0); /* Wait until data register empty. */
-            UDR0 = c;
-#else
-            Serial.write(c);
-#endif
-            length--;
-            
-          }
-        }
-        Serial.println(F("\n****"));
-        fona.HTTP_GET_end();
-      }
-
-    if(input == 'W') {
-        // Post data to website
-        uint16_t statuscode;
-        int16_t length;
-        char url[80];
-        char data[80];
-
-        flushSerial();
-        Serial.println(F("NOTE: in beta! Use simple websites to post!"));
-        Serial.println(F("URL to post (e.g. httpbin.org/post):"));
-        Serial.print(F("http://")); readline(url, 79);
-        Serial.println(url);
-        Serial.println(F("Data to post (e.g. \"foo\" or \"{\"simple\":\"json\"}\"):"));
-        readline(data, 79);
-        Serial.println(data);
-
-        Serial.println(F("****"));
-        if (!fona.HTTP_POST_start(url, F("text/plain"), (uint8_t *) data, strlen(data), &statuscode, (uint16_t *)&length)) {
-          Serial.println("Failed!");
-        }
-        while (length > 0) {
-          while (fona.available()) {
-            char c = fona.read();
-
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-            loop_until_bit_is_set(UCSR0A, UDRE0); /* Wait until data register empty. */
-            UDR0 = c;
-#else
-            Serial.write(c);
-#endif
-
-            length--;
-            if (! length) break;
-          }
-        }
-        Serial.println(F("\n****"));
-        fona.HTTP_POST_end();
-      }
+//    if(input == 'g') {
+//        // turn GPRS off
+//        if (!fona.enableGPRS(false))
+//          Serial.println(F("Failed to turn off"));
+//      }
+//    if(input == 'G') {
+//        // turn GPRS on
+//        if (!fona.enableGPRS(true))
+//          Serial.println(F("Failed to turn on"));
+//      }
+//    if(input == 'l') {
+//        // check for GSMLOC (requires GPRS)
+//        uint16_t returncode;
+//
+//        if (!fona.getGSMLoc(&returncode, replybuffer, 250))
+//          Serial.println(F("Failed!"));
+//        if (returncode == 0) {
+//          Serial.println(replybuffer);
+//        } else {
+//          Serial.print(F("Fail code #")); Serial.println(returncode);
+//        }
+//
+//      }
+//    if(input == 'w') {
+//        // read website URL
+//        uint16_t statuscode;
+//        int16_t length;
+//        char url[80];
+//
+//        flushSerial();
+//        Serial.println(F("NOTE: in beta! Use small webpages to read!"));
+//        Serial.println(F("URL to read (e.g. www.adafruit.com/testwifi/index.html):"));
+//        Serial.print(F("http://")); readline(url, 79);
+//        Serial.println(url);
+//
+//        Serial.println(F("****"));
+//        if (!fona.HTTP_GET_start(url, &statuscode, (uint16_t *)&length)) {
+//          Serial.println("Failed!");
+//        }
+//        while (length > 0) {
+//          while (fona.available()) {
+//            char c = fona.read();
+//
+//            // Serial.write is too slow, we'll write directly to Serial register!
+//#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+//            loop_until_bit_is_set(UCSR0A, UDRE0); /* Wait until data register empty. */
+//            UDR0 = c;
+//#else
+//            Serial.write(c);
+//#endif
+//            length--;
+//            
+//          }
+//        }
+//        Serial.println(F("\n****"));
+//        fona.HTTP_GET_end();
+//      }
+//
+//    if(input == 'W') {
+//        // Post data to website
+//        uint16_t statuscode;
+//        int16_t length;
+//        char url[80];
+//        char data[80];
+//
+//        flushSerial();
+//        Serial.println(F("NOTE: in beta! Use simple websites to post!"));
+//        Serial.println(F("URL to post (e.g. httpbin.org/post):"));
+//        Serial.print(F("http://")); readline(url, 79);
+//        Serial.println(url);
+//        Serial.println(F("Data to post (e.g. \"foo\" or \"{\"simple\":\"json\"}\"):"));
+//        readline(data, 79);
+//        Serial.println(data);
+//
+//        Serial.println(F("****"));
+//        if (!fona.HTTP_POST_start(url, F("text/plain"), (uint8_t *) data, strlen(data), &statuscode, (uint16_t *)&length)) {
+//          Serial.println("Failed!");
+//        }
+//        while (length > 0) {
+//          while (fona.available()) {
+//            char c = fona.read();
+//
+//#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+//            loop_until_bit_is_set(UCSR0A, UDRE0); /* Wait until data register empty. */
+//            UDR0 = c;
+//#else
+//            Serial.write(c);
+//#endif
+//
+//            length--;
+//            if (! length) break;
+//          }
+//        }
+//        Serial.println(F("\n****"));
+//        fona.HTTP_POST_end();
+//      }
     /*****************************************/
 
   }
@@ -392,23 +392,23 @@ void loop() {
     for (byte i = 0; i < radio.DATALEN; i++)
     
       Serial.print((char)radio.DATA[i]);
-    if(radio.DATA[0] == 'T'){
-        char sendto[21], message[141];
-        flushSerial();
-        //Serial.print(F("Send to #"));
-        //readline(sendto, 20);
-        strcpy(sendto,"9715064940");
-        Serial.println(sendto);
-        //Serial.print(F("Type out one-line message (140 char): "));
-        //readline(message, 140);
-        strcpy(message,"Testing.");
-        Serial.println(message);
-        if (!fona.sendSMS(sendto, message)) {
-          Serial.println(F("Failed"));
-        } else {
-          Serial.println(F("Sent!"));
-        }
-    }
+//    if(radio.DATA[0] == 'T'){
+//        char sendto[21], message[141];
+//        flushSerial();
+//        //Serial.print(F("Send to #"));
+//        //readline(sendto, 20);
+//        strcpy(sendto,"9715064940");
+//        Serial.println(sendto);
+//        //Serial.print(F("Type out one-line message (140 char): "));
+//        //readline(message, 140);
+//        strcpy(message,"Testing.");
+//        Serial.println(message);
+//        if (!fona.sendSMS(sendto, message)) {
+//          Serial.println(F("Failed"));
+//        } else {
+//          Serial.println(F("Sent!"));
+//        }
+//    }
     if(radio.DATA[0] == 'W'){
       
     }
