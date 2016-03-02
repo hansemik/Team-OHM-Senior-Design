@@ -56,71 +56,83 @@ int Node_IDs[99];
 int num_nodes = 1;
 
 
-//FLASH Blocks
-uint32_t BLOCK0 = 0x000000;
-uint32_t BLOCK1 = 0x010000;
-uint32_t BLOCK2 = 0x020000;
-uint32_t BLOCK3 = 0x030000;
-uint32_t BLOCK4 = 0x040000;
-uint32_t BLOCK5 = 0x050000;
-uint32_t BLOCK6 = 0x060000;
-uint32_t BLOCK7 = 0x070000;
-uint32_t BLOCK8 = 0x080000;
-uint32_t BLOCK9 = 0x090000;
-uint32_t BLOCK10 = 0x0A0000;
-uint32_t BLOCK11 = 0x0B0000;
-uint32_t BLOCK12 = 0x0C0000;
-uint32_t BLOCK13 = 0x0D0000;
-uint32_t BLOCK14 = 0x0E0000;
-uint32_t BLOCK15 = 0x0F0000;
+////FLASH Blocks
+//uint32_t BLOCK0 = 0x000000;
+//uint32_t BLOCK1 = 0x010000;
+//uint32_t BLOCK2 = 0x020000;
+//uint32_t BLOCK3 = 0x030000;
+//uint32_t BLOCK4 = 0x040000;
+//uint32_t BLOCK5 = 0x050000;
+//uint32_t BLOCK6 = 0x060000;
+//uint32_t BLOCK7 = 0x070000;
+//uint32_t BLOCK8 = 0x080000;
+//uint32_t BLOCK9 = 0x090000;
+//uint32_t BLOCK10 = 0x0A0000;
+//uint32_t BLOCK11 = 0x0B0000;
+//uint32_t BLOCK12 = 0x0C0000;
+//uint32_t BLOCK13 = 0x0D0000;
+//uint32_t BLOCK14 = 0x0E0000;
+//uint32_t BLOCK15 = 0x0F0000;
+//
+//uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
+//                        &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
+//                        &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
+//                        &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
 
-uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
-                        &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
-                        &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
-                        &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
+                        //Address of flash blocks
+const uint32_t BLOCKS[16] = {0x000000, 0x010000, 0x020000, 0x030000,
+                             0x040000, 0x050000, 0x060000, 0x070000,
+                             0x080000, 0x090000, 0x0A0000, 0x0B0000,
+                             0x0C0000, 0x0D0000, 0x0E0000, 0x0F0000};
 
-uint16_t block0pos = 0;
-uint16_t block1pos = 0;
-uint16_t block2pos = 0;
-uint16_t block3pos = 0;
-uint16_t block4pos = 0;
-uint16_t block5pos = 0;
-uint16_t block6pos = 0;
-uint16_t block7pos = 0;
-uint16_t block8pos = 0;
-uint16_t block9pos = 0;
-uint16_t block10pos = 0;
-uint16_t block11pos = 0;
-uint16_t block12pos = 0;
-uint16_t block13pos = 0;
-uint16_t block14pos = 0;
-uint16_t block15pos = 0;
+//uint16_t block0pos = 0;
+//uint16_t block1pos = 0;
+//uint16_t block2pos = 0;
+//uint16_t block3pos = 0;
+//uint16_t block4pos = 0;
+//uint16_t block5pos = 0;
+//uint16_t block6pos = 0;
+//uint16_t block7pos = 0;
+//uint16_t block8pos = 0;
+//uint16_t block9pos = 0;
+//uint16_t block10pos = 0;
+//uint16_t block11pos = 0;
+//uint16_t block12pos = 0;
+//uint16_t block13pos = 0;
+//uint16_t block14pos = 0;
+//uint16_t block15pos = 0;
+//
+//
+//uint16_t *blockPos[16] = {&block0pos,&block1pos,&block2pos,&block3pos,
+//                          &block4pos,&block5pos,&block6pos,&block7pos,
+//                          &block8pos,&block9pos,&block10pos,&block11pos,
+//                          &block12pos,&block13pos,&block14pos,&block15pos};
 
+const uint16_t ChNStartPos[8] = {0x0000, 0x2000, 0x4000, 0x6000,
+                                 0x8000, 0xA000, 0xC000, 0xE000};
 
-uint16_t *blockPos[16] = {&block0pos,&block1pos,&block2pos,&block3pos,
-                          &block4pos,&block5pos,&block6pos,&block7pos,
-                          &block8pos,&block9pos,&block10pos,&block11pos,
-                          &block12pos,&block13pos,&block14pos,&block15pos};
+uint16_t ChNCurrPos[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 uint16_t currBlockMax = 0;
 
 
-//Each Sector is 4KB (Each channel gets 8KB)
-// 8KB / 2B per ADC read = 4000 reads possible
-uint16_t CH0_pos = 0x0000; //Sector 0 & 1
-uint16_t CH1_pos = 0x2000; //Sector 2 & 3
-uint16_t CH2_pos = 0x4000; //Sector 4 & 5
-uint16_t CH3_pos = 0x6000; //Sector 6 & 7
-uint16_t CH4_pos = 0x8000; //Sector 8 & 9
-uint16_t CH5_pos = 0xA000; //Sector 10 & 11
-uint16_t CH6_pos = 0xC000; //Sector 12 & 13
-uint16_t CH7_pos = 0xE000; //Sector 14 & 15
+////Each Sector is 4KB (Each channel gets 8KB)
+//// 8KB / 2B per ADC read = 4000 reads possible
+//uint16_t CH0_pos = 0x0000; //Sector 0 & 1
+//uint16_t CH1_pos = 0x2000; //Sector 2 & 3
+//uint16_t CH2_pos = 0x4000; //Sector 4 & 5
+//uint16_t CH3_pos = 0x6000; //Sector 6 & 7
+//uint16_t CH4_pos = 0x8000; //Sector 8 & 9
+//uint16_t CH5_pos = 0xA000; //Sector 10 & 11
+//uint16_t CH6_pos = 0xC000; //Sector 12 & 13
+//uint16_t CH7_pos = 0xE000; //Sector 14 & 15
+//
+//uint16_t *CHNpos[16] = {&CH0_pos,&CH1_pos,&CH2_pos,&CH3_pos,
+//                        &CH4_pos,&CH5_pos,&CH6_pos,&CH7_pos};
 
-uint16_t *CHNpos[16] = {&CH0_pos,&CH1_pos,&CH2_pos,&CH3_pos,
-                        &CH4_pos,&CH5_pos,&CH6_pos,&CH7_pos};
-
+                                  
 SPIFlash flash(FLASH_SS, 0xEF40); //EF30 for 8mbit  Windbond chip (W25X40CL)
-bool promiscuousMode = false; //set to 'true' to sniff all packets on the same network
+bool promiscuousMode = true; //set to 'true' to sniff all packets on the same network
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
@@ -295,13 +307,39 @@ void loop() {
       }
       Serial.println(sending);
       Serial.println(strlen(sending));
-      radio.send(GATEWAYID, sending, strlen(sending), 0);
+      int retry_count = 0;
+      while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
+      {
+        retry_count++;
+        if (retry_count > 3)
+        {
+          Serial.println("Error: Can't communicate");
+          break;
+        }
+      }
+
+      char data[50];
+      char write_data[50];
+      //char done[4];
 
       while(1)
       {
         Serial.println("Hello?");
         if (radio.receiveDone())
         {
+
+          if (radio.ACKRequested())
+          {
+            byte theNodeID = radio.SENDERID;
+            Serial.println(theNodeID);
+            radio.sendACK();
+            Serial.println(" - ACK sent.");
+          }
+
+          for (i = 0; i < 50; i++)
+          {
+            data[i] = '\0';
+          }
           Serial.println(idParser());
           Serial.println(atoi(ID));
           Serial.println(cmdParser());
@@ -311,11 +349,12 @@ void loop() {
             //Store data
             //Todo: create parser based on spaces, then write to flash
             //int space_pos = valParser(space_pos, radio.DATA); // ID(0), ID(1), CMD(2), Space(3), Val(4)
-            char data[radio.DATALEN];
+
             //sprintf(data, "%x", (char)radio.DATA);
             Serial.print("Data: ");
             Serial.println(data);
-            for (j = 0; j < radio.DATALEN; j++)
+            Serial.println(radio.DATALEN);
+            for (j = 0; j < (radio.DATALEN - 1) ; j++)
             {
               data[j] = (char)radio.DATA[j];
             }
@@ -326,21 +365,41 @@ void loop() {
 //              Serial.print(radio.DATA[j]);
 //            }
             Serial.println();
-            char write_data[4];
+
             j = 0;
             for (i = 4; i < strlen(data); i++)
             {
-              if (radio.DATA[i] != ' ')
+//              for (j = 0; j < 4; j++)
+//              {
+//                if ( (i+j-1) > strlen(data))
+//                {
+//                  break;
+//                }
+//                done[j] = data[j+i];
+//              }
+//              Serial.print("Done: ");
+//              Serial.println(done);
+
+              if ( (i + 3) < (strlen(data)))
               {
-                write_data[j] = data[i];
-                j++; 
+                if (data[i] == 'D' && data[i+1] == 'D' && data[i+2] == 'D' && data[i+3] == 'D')
+                  break;
+              }
+
+              if (data[i] == ' ')
+              {
+                //write_data[i] = data[i];
+                continue; 
               }
               else
               {
-                j = 0;
-                flash.writeBytes(*BLOCKS[0] + CH0_pos, write_data, strlen(write_data));
-                CH0_pos = CH0_pos + strlen(write_data);
-                write_data[0] = write_data[1] = write_data[2] = write_data[3] = '\0';                
+                Serial.print("i = ");
+                Serial.println(i);
+                Serial.print("Data[i] = ");
+                Serial.println(data[i]);
+                flash.writeByte(BLOCKS[0] + ChNStartPos[0] + ChNCurrPos[0], data[i]);
+                ChNCurrPos[0] = ChNCurrPos[0] + 1;
+                //write_data[0] = write_data[1] = write_data[2] = write_data[3] = '\0';                
               }
             }
             break;
@@ -392,7 +451,17 @@ void loop() {
       //Serial.println(val);
       //Serial.println(ADCcode);
       Serial.println(strlen(sending));
-      radio.send(GATEWAYID, sending, strlen(sending), 0);
+
+      int retry_count = 0;
+      while(!radio.sendWithRetry(2, sending, strlen(sending), 5, 100))
+      {
+        retry_count++;
+        if (retry_count > 3)
+        {
+          Serial.println("Error: Can't communicate");
+          break;
+        }
+      }
 
     }
     
@@ -535,21 +604,24 @@ int valParser(int start, char* str)
 
 void resetFlashAddr()
 {
-  block0pos = 0;
-  block1pos = 0;
-  block2pos = 0;
-  block3pos = 0;
-  block4pos = 0;
-  block5pos = 0;
-  block6pos = 0;
-  block7pos = 0;
-  block8pos = 0;
-  block9pos = 0;
-  block10pos = 0;
-  block11pos = 0;
-  block12pos = 0;
-  block13pos = 0;
-  block14pos = 0;
-  block15pos = 0;
+
+  for (int i = 0; i < 7; i++)
+    ChNCurrPos[i] = 0;
+//  block0pos = 0;
+//  block1pos = 0;
+//  block2pos = 0;
+//  block3pos = 0;
+//  block4pos = 0;
+//  block5pos = 0;
+//  block6pos = 0;
+//  block7pos = 0;
+//  block8pos = 0;
+//  block9pos = 0;
+//  block10pos = 0;
+//  block11pos = 0;
+//  block12pos = 0;
+//  block13pos = 0;
+//  block14pos = 0;
+//  block15pos = 0;
 }
 

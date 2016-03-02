@@ -44,6 +44,7 @@
 #define SAMPLE_TIME     5 //(in seconds)
 #define NUM_SAMPLES     ( 1000 / SAMPLE_FREQ * SAMPLE_TIME )
 int samples_taken = 0;
+int timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
 
 int TRANSMITPERIOD = 10; //transmit a packet to gateway so often (in ms)
 char payload[] = "1234";
@@ -66,28 +67,28 @@ uint8_t _TCCR1B;
 uint8_t _ICR1;
 uint8_t _TIMSK1;
 
-//FLASH Blocks
-uint32_t BLOCK0 = 0x000000;
-uint32_t BLOCK1 = 0x010000;
-uint32_t BLOCK2 = 0x020000;
-uint32_t BLOCK3 = 0x030000;
-uint32_t BLOCK4 = 0x040000;
-uint32_t BLOCK5 = 0x050000;
-uint32_t BLOCK6 = 0x060000;
-uint32_t BLOCK7 = 0x070000;
-uint32_t BLOCK8 = 0x080000;
-uint32_t BLOCK9 = 0x090000;
-uint32_t BLOCK10 = 0x0A0000;
-uint32_t BLOCK11 = 0x0B0000;
-uint32_t BLOCK12 = 0x0C0000;
-uint32_t BLOCK13 = 0x0D0000;
-uint32_t BLOCK14 = 0x0E0000;
-uint32_t BLOCK15 = 0x0F0000;
-
-uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
-                        &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
-                        &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
-                        &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
+////FLASH Blocks
+//uint32_t BLOCK0 = 0x000000;
+//uint32_t BLOCK1 = 0x010000;
+//uint32_t BLOCK2 = 0x020000;
+//uint32_t BLOCK3 = 0x030000;
+//uint32_t BLOCK4 = 0x040000;
+//uint32_t BLOCK5 = 0x050000;
+//uint32_t BLOCK6 = 0x060000;
+//uint32_t BLOCK7 = 0x070000;
+//uint32_t BLOCK8 = 0x080000;
+//uint32_t BLOCK9 = 0x090000;
+//uint32_t BLOCK10 = 0x0A0000;
+//uint32_t BLOCK11 = 0x0B0000;
+//uint32_t BLOCK12 = 0x0C0000;
+//uint32_t BLOCK13 = 0x0D0000;
+//uint32_t BLOCK14 = 0x0E0000;
+//uint32_t BLOCK15 = 0x0F0000;
+//
+//uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
+//                        &BLOCK4,&BLOCK5,&BLOCK6,&BLOCK7,
+//                        &BLOCK8,&BLOCK9,&BLOCK10,&BLOCK11,
+//                        &BLOCK12,&BLOCK13,&BLOCK14,&BLOCK15};
 //
 //uint16_t block0pos = 0;
 //uint16_t block1pos = 0;
@@ -113,8 +114,16 @@ uint32_t *BLOCKS[16] = {&BLOCK0,&BLOCK1,&BLOCK2,&BLOCK3,
 //                          &block12pos,&block13pos,&block14pos,&block15pos};
 //
 
-//Pos 0 in array is 0th block pos
-uint16_t blockPos[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+//Address of flash blocks
+const uint32_t BLOCKS[16] = {0x000000, 0x010000, 0x020000, 0x030000,
+                             0x040000, 0x050000, 0x060000, 0x070000,
+                             0x080000, 0x090000, 0x0A0000, 0x0B0000,
+                             0x0C0000, 0x0D0000, 0x0E0000, 0x0F0000};
+
+const uint16_t ChNStartPos[8] = {0x0000, 0x2000, 0x4000, 0x6000,
+                                 0x8000, 0xA000, 0xC000, 0xE000};
+
+uint16_t ChNCurrPos[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 uint16_t currBlockMax = 0;
 
@@ -197,7 +206,8 @@ uint16_t adc_code = 0;                           // The LTC1867 code
 int i,count = 0;
 char input;
 
-void loop() {
+void loop() 
+{
 
   //Blink(LED,3);  
 
@@ -265,7 +275,7 @@ void loop() {
 
       Serial.print("0-256: ");
       while(counter<=256){
-        Serial.print(flash.readByte(BLOCK0 +(counter++)), HEX);
+        Serial.print(flash.readByte(BLOCKS[0] +(counter++)), HEX);
         Serial.print('.');
       }
       while(flash.busy());
@@ -316,10 +326,10 @@ void loop() {
 
 
   
-
   //check for any received packets
   if (radio.receiveDone())
   {
+    Serial.println("Packet");
     Serial.println(idParser());
     Serial.println(cmdParser());
     Serial.print('[');Serial.print(radio.SENDERID, DEC);Serial.print("] ");
@@ -328,6 +338,13 @@ void loop() {
     Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
 
     Serial.println();
+
+    if (radio.ACKRequested())
+    {
+      //byte theNodeID = radio.SENDERID;
+      radio.sendACK();
+      Serial.println(" - ACK sent.");
+    }
 
     int ID = idParser();
     if (ID == 99 || ID == NODEID)
@@ -344,23 +361,22 @@ void loop() {
       {
         //block0pos = 47288;
         //cmd 1 Send readystatus
-        Serial.println(blockPos[0]);
-        blockPos[0] = blockPos[0] + 1;
+        Serial.println(ChNCurrPos[0]);
+        ChNCurrPos[0] = ChNCurrPos[0] + 1;
 
-        Serial.println(blockPos[0]);
-        blockPos[0] = blockPos[0] + 1;
-
+        Serial.println(ChNCurrPos[0]);
+        ChNCurrPos[0] = ChNCurrPos[0] + 1;
       }
 
       if (cmd == 2)
       {
-        currBlockMax = blockPos[0];
+        currBlockMax = ChNCurrPos[0];
         //block0pos = 0;
         //cmd 2 Send data
         resetFlashAddr();
         char cmd_char[10];
         itoa(cmd, cmd_char, 10);
-        char sending[] = " ";
+        char sending[50] = " ";
         char ID[2] = {' ', ' '};
         itoa(NODEID, ID, 10);
         if (strlen(ID) == 1)
@@ -383,42 +399,67 @@ void loop() {
         uint32_t p;
         uint32_t p1;
         byte d;
+        char b;
+        char b1[1] = {' '};
         for (i = 0; i < 8; i++)
         {
           strcat(sending," ");
           Serial.println();
           Serial.println();
           Serial.print("Pos within Block: ");
-          Serial.println(blockPos[0]);
+          Serial.println(ChNCurrPos[0]);
           
           //itoa(flash.readByte(*BLOCKS[0] + *blockPos[0]),code,16);
-          p = blockPos[0];
-          p1 = blockPos[0];
+          p = BLOCKS[0] + ChNStartPos[0]+ ChNCurrPos[0];
+          //p1 = ChNCurrPos[0];
           d = flash.readByte(p);
-          sprintf(code, "%x", d);
+          b = d;
+          b1[0] = {b};
+          //char hi = adc_code >> 8;
+          //sprintf(code, "%x", d);
           Serial.print("Read flash: ");
-          Serial.println(d);
-          Serial.print("code: ");
-          Serial.println(code);
+          Serial.println(b1);
+          //Serial.print("code: ");
+          //Serial.println(code);
 
+          Serial.flush();
           Serial.print("Pos: ");
           Serial.println(p);
           Serial.print("Pos within Block: ");
-          Serial.println(blockPos[0]);
+          Serial.println(ChNStartPos[0]);
           Serial.print("Block Pos: ");
-          Serial.println(*BLOCKS[0]);
-          blockPos[0] = (blockPos[0]) + 1;
+          Serial.println(BLOCKS[0]);
+          ChNCurrPos[0] = ChNCurrPos[0] + 1;
           //block0pos = block0pos + 1;
           //(*blockPos[0])++;
           
-          strcat(sending,code);
+          strcat(sending,b1);
         }
 
+        Serial.flush();
         Serial.println(sending);
-        radio.sendWithRetry(GATEWAYID, sending, strlen(sending));
-        
-        
+        Serial.println(strlen(sending));
+
+        int retry_count = 0;
+        while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
+        {
+          retry_count++;
+          if (retry_count > 3)
+          {
+            Serial.println("Error: Can't communicate");
+            break;
+          }
+        }
+
+//        while(1)
+//        {
+//          //Wait for next cmd
+//          if (radio.receiveDone());
+//        }
       }
+
+      Serial.println("After 2");
+
 
       if (cmd == 3)
       {
@@ -450,7 +491,8 @@ void loop() {
         unsetTimer1();
         samples_taken = 0;        
       }
-    
+      Serial.println("End Receive");
+      Serial.flush();
     }
 
 //    if (radio.ACKRequested())
@@ -461,11 +503,13 @@ void loop() {
 //    Blink(LED,3);
 //    Serial.println();
   }
+  //Serial.println("loop");
+  //Serial.flush();
 }
 
 ISR (TIMER1_OVF_vect)
 {
-  TCNT1 = 64911;
+  TCNT1 = 65535 - timer_sub;
   timer_rdy = 1;
   // action to be done every 10ms
   if (switch_flag == 1)
@@ -494,9 +538,9 @@ void Blink(byte PIN, int DELAY_MS)
 
 void readADC()
 {
-  for (i = 0; i <= 7; i++)
+  for (i = 0; i < 8; i++)
   {
-    adc_command = BUILD_COMMAND_SINGLE_ENDED[0] | uni_bi_polar;   // Build ADC command for channel 0
+    adc_command = BUILD_COMMAND_SINGLE_ENDED[i] | uni_bi_polar;   // Build ADC command for channel 0
     LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Throws out last reading
     LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Takes reading
   }
@@ -505,66 +549,82 @@ void readADC()
 void writeADCtoFlash()
 {
   char val[4];
-#ifdef CH0
-  sprintf(val, "%x", ADCcode[CH0]);
-  //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
-  flash.writeBytes(BLOCK0 + blockPos[0], val, strlen(val));
-  Serial.println(BLOCK0 + blockPos[0]);
-  //block0pos = block0pos + strlen(val);
-  blockPos[0] = blockPos[0] + strlen(val);
-  //Serial.println(block0pos);
-  Serial.println(val);
-  //Serial.println(ADCcode[CH0]);
-#endif
 
-#ifdef CH1
-  sprintf(val, "%x", ADCcode[CH1]);
-  flash.writeBytes(BLOCK1 + block1pos, val, strlen(val));
-  block1pos = block1pos + strlen(val);
-#endif
+  for (i = 0; i < 8; i++)
+  {
+    sprintf(val, "%x", ADCcode[i]);
+    //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
+    flash.writeBytes(ChNStartPos[i] + ChNCurrPos[i], val, strlen(val));
+    Serial.println(ChNStartPos[i] + ChNCurrPos[i]);
+    //block0pos = block0pos + strlen(val);
+    ChNCurrPos[i] = ChNCurrPos[i] + strlen(val);
+    //Serial.println(block0pos);
+    Serial.println(val);
+    //Serial.println(ADCcode[CH0]);
+  }
 
-#ifdef CH2
-  sprintf(val, "%x", ADCcode[CH2]);
-  flash.writeBytes(BLOCK2 + block2pos, val, strlen(val));
-  block2pos = block2pos + strlen(val);
-#endif
-
-#ifdef CH3
-  sprintf(val, "%x", ADCcode[CH3]);
-  flash.writeBytes(BLOCK3 + block3pos, val, strlen(val));
-  block3pos = block3pos + strlen(val);
-#endif
-
-#ifdef CH4
-  sprintf(val, "%x", ADCcode[CH4]);
-  flash.writeBytes(BLOCK4 + block4pos, val, strlen(val));
-  block4pos = block4pos + strlen(val);
-#endif
-
-#ifdef CH5
-  sprintf(val, "%x", ADCcode[CH5]);
-  flash.writeBytes(BLOCK5 + block5pos, val, strlen(val));
-  block5pos = block5pos + strlen(val);
-#endif
-
-#ifdef CH6
-  sprintf(val, "%x", ADCcode[CH6]);
-  flash.writeBytes(BLOCK6 + block6pos, val, strlen(val));
-  block6pos = block6pos + strlen(val);
-#endif
-
-#ifdef CH7
-  sprintf(val, "%x", ADCcode[CH7]);
-  flash.writeBytes(BLOCK7 + block2pos, val, strlen(val));
-  block7pos = block7pos + strlen(val);
-#endif
+  
+//#ifdef CH0
+//  sprintf(val, "%x", ADCcode[CH0]);
+//  //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
+//  flash.writeBytes(BLOCKS[0] + ChNCurrPos[0], val, strlen(val));
+//  Serial.println(BLOCKS[0] + blockPos[0]);
+//  //block0pos = block0pos + strlen(val);
+//  blockPos[0] = blockPos[0] + strlen(val);
+//  //Serial.println(block0pos);
+//  Serial.println(val);
+//  //Serial.println(ADCcode[CH0]);
+//#endif
+//
+//#ifdef CH1
+//  sprintf(val, "%x", ADCcode[CH1]);
+//  flash.writeBytes(BLOCKS[1] + ChNCurrPos[1], val, strlen(val));
+//  block1pos = block1pos + strlen(val);
+//#endif
+//
+//#ifdef CH2
+//  sprintf(val, "%x", ADCcode[CH2]);
+//  flash.writeBytes(BLOCKS[2] + ChNCurrPos[1], val, strlen(val));
+//  block2pos = block2pos + strlen(val);
+//#endif
+//
+//#ifdef CH3
+//  sprintf(val, "%x", ADCcode[CH3]);
+//  flash.writeBytes(BLOCKS[3] + block3pos, val, strlen(val));
+//  block3pos = block3pos + strlen(val);
+//#endif
+//
+//#ifdef CH4
+//  sprintf(val, "%x", ADCcode[CH4]);
+//  flash.writeBytes(BLOCK[4] + block4pos, val, strlen(val));
+//  block4pos = block4pos + strlen(val);
+//#endif
+//
+//#ifdef CH5
+//  sprintf(val, "%x", ADCcode[CH5]);
+//  flash.writeBytes(BLOCK[5] + block5pos, val, strlen(val));
+//  block5pos = block5pos + strlen(val);
+//#endif
+//
+//#ifdef CH6
+//  sprintf(val, "%x", ADCcode[CH6]);
+//  flash.writeBytes(BLOCK[6] + block6pos, val, strlen(val));
+//  block6pos = block6pos + strlen(val);
+//#endif
+//
+//#ifdef CH7
+//  sprintf(val, "%x", ADCcode[CH7]);
+//  flash.writeBytes(BLOCK[7] + block2pos, val, strlen(val));
+//  block7pos = block7pos + strlen(val);
+//#endif
 }
 
 
 void resetFlashAddr()
 {
-  for (int i = 0; i < 16; i++)
-    blockPos[i] = 0;
+  for (int i = 0; i < 7; i++)
+    ChNCurrPos[i] = 0;
+    
 //  block0pos = 0;
 //  block1pos = 0;
 //  block2pos = 0;
@@ -619,7 +679,7 @@ void setTimer1()
   
   TCCR1A = 0;    // set entire TCCR1A register to 0
   TCCR1B = 0;    // set entire TCCR1B register to 0 
-  TCNT1 = 64911;
+  TCNT1 = 65535 - timer_sub;
 
   TIMSK1 |= (1 << TOIE1);
   //Set interrupt on compare match
@@ -651,6 +711,7 @@ int idParser()
 
 int cmdParser()
 {
+  //CMD is third byte in DATA array
   char cmd[] = {(char)radio.DATA[2]};
   return atoi(cmd);
 }
