@@ -343,7 +343,7 @@ void loop()
     {
       //byte theNodeID = radio.SENDERID;
       radio.sendACK();
-      Serial.println(" - ACK sent.");
+      Serial.println(" CMD 2 - ACK sent.");
     }
 
     int ID = idParser();
@@ -441,15 +441,18 @@ void loop()
         Serial.println(strlen(sending));
 
         int retry_count = 0;
-        while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
-        {
-          retry_count++;
-          if (retry_count > 3)
-          {
-            Serial.println("Error: Can't communicate");
-            break;
-          }
-        }
+
+        radio.send(GATEWAYID, sending, strlen(sending));
+
+//        while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
+//        {
+//          retry_count++;
+//          if (retry_count > 3)
+//          {
+//            Serial.println("Error: Can't communicate(Send DATA)");
+//            break;
+//          }
+//        }
 
 //        while(1)
 //        {

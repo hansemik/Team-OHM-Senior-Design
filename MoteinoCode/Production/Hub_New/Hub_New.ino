@@ -40,8 +40,9 @@
   RFM69 radio;
 #endif
 
-unsigned long time1;
-unsigned long time2;
+unsigned long now = 0;
+unsigned long time1 = 0;
+unsigned long time2 = 0;
 signed long diff;
 int switch_flag = 0;
 int timer_rdy = 0;
@@ -203,8 +204,8 @@ void loop() {
     {
       Serial.println("Flash content:");
       int counter = 0;
-      Serial.print("0-6000: ");
-      while(counter<=6000){
+      Serial.print("0-255: ");
+      while(counter<=255){
         Serial.print(flash.readByte(counter++), HEX);
         Serial.print('.');
       }
@@ -308,23 +309,36 @@ void loop() {
       Serial.println(sending);
       Serial.println(strlen(sending));
       int retry_count = 0;
-      while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
-      {
-        retry_count++;
-        if (retry_count > 3)
-        {
-          Serial.println("Error: Can't communicate");
-          break;
-        }
-      }
+
+      //Send Command
+//      while(!radio.sendWithRetry(2, sending, strlen(sending), 8, 100))
+//      {
+//        retry_count++;
+//        if (retry_count > 3)
+//        {
+//          Serial.println("Error: Can't communicate(Send 2)");
+//          break;
+//        }
+//      }
+
+      radio.send(2, sending, strlen(sending));
+      now = micros();
+      
 
       char data[50];
       char write_data[50];
       //char done[4];
 
+      //Receive command and data until done
       while(1)
       {
-        Serial.println("Hello?");
+        if ( (micros() - now) > 100000) //100ms
+        {
+          //Havn't seen a command in a while
+          
+        }
+        
+        //Serial.println("Hello?");
         if (radio.receiveDone())
         {
 
@@ -336,6 +350,20 @@ void loop() {
             Serial.println(" - ACK sent.");
           }
 
+          if (radio.DATALEN == 0)
+            continue; // ACK packet
+         
+          if ((char)radio.DATA[radio.DATALEN - 4] == 'D' && 
+              (char)radio.DATA[radio.DATALEN - 3] == 'O' && 
+              (char)radio.DATA[radio.DATALEN - 2] == 'N' &&
+              (char)radio.DATA[radio.DATALEN - 1] == 'E')
+          {
+            break;
+          }
+
+          Serial.print("Radio datalen - 4: ");
+          Serial.println((char)radio.DATA[radio.DATALEN - 4]);
+          
           for (i = 0; i < 50; i++)
           {
             data[i] = '\0';
@@ -354,7 +382,7 @@ void loop() {
             Serial.print("Data: ");
             Serial.println(data);
             Serial.println(radio.DATALEN);
-            for (j = 0; j < (radio.DATALEN - 1) ; j++)
+            for (j = 0; j < (radio.DATALEN) ; j++)
             {
               data[j] = (char)radio.DATA[j];
             }
@@ -380,12 +408,6 @@ void loop() {
 //              Serial.print("Done: ");
 //              Serial.println(done);
 
-              if ( (i + 3) < (strlen(data)))
-              {
-                if (data[i] == 'D' && data[i+1] == 'D' && data[i+2] == 'D' && data[i+3] == 'D')
-                  break;
-              }
-
               if (data[i] == ' ')
               {
                 //write_data[i] = data[i];
@@ -397,9 +419,15 @@ void loop() {
                 Serial.println(i);
                 Serial.print("Data[i] = ");
                 Serial.println(data[i]);
+                Serial.print("Absolute Pos: ");
+                Serial.println(BLOCKS[0] + ChNStartPos[0] + ChNCurrPos[0]);
+                Serial.print("ChNCurrPos: ");
+                Serial.println(ChNCurrPos[0]);
                 flash.writeByte(BLOCKS[0] + ChNStartPos[0] + ChNCurrPos[0], data[i]);
                 ChNCurrPos[0] = ChNCurrPos[0] + 1;
                 //write_data[0] = write_data[1] = write_data[2] = write_data[3] = '\0';                
+
+              
               }
             }
             break;
@@ -453,7 +481,7 @@ void loop() {
       Serial.println(strlen(sending));
 
       int retry_count = 0;
-      while(!radio.sendWithRetry(2, sending, strlen(sending), 5, 100))
+      while(!radio.sendWithRetry(2, sending, strlen(sending), 8, 100))
       {
         retry_count++;
         if (retry_count > 3)
