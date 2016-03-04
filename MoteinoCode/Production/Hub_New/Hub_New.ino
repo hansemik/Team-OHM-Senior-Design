@@ -207,74 +207,79 @@ void loop() {
       Serial.println('F');
     }
 
-
     if (input == '0')
     {
       //Get delay
       char cmd[] = "0";
-      
-      char ID[2] = {' ', ' '};
-      itoa(Node_IDs[0], ID, 10);
-      Serial.print("Node ID:");
-      Serial.println(ID);
-      Serial.print("cmd:");
-      Serial.println(cmd);
-      Serial.println(strlen(ID));
       char sending[50] = " ";
-      if (strlen(ID) == 1)
-      {
-        //Serial.println("here");
-        strcpy(sending,zero);
-        strcat(sending,ID);
-        strcat(sending,cmd);
-      }
-      else if (strlen(ID) == 2)
-      {
-        strcpy(sending,ID);
-        strcat(sending,cmd);
-      }
-      strcat(sending, " DELAY");
-      Serial.println(sending);
-      Serial.println(strlen(sending));
-      radio.send(Node_IDs[0], sending, strlen(sending));
+      char ID[2] = {' ', ' '};
 
-      now = micros();
-      while(1)
+      for (i = 0; i < num_nodes; i++)
       {
-        time3 = micros();
-        if (radio.receiveDone())
+        itoa(Node_IDs[i], ID, 10);
+        Serial.print("Node ID:");
+        Serial.println(ID);
+        Serial.print("cmd:");
+        Serial.println(cmd);
+        Serial.println(strlen(ID));
+  
+        if (strlen(ID) == 1)
+        {
+          //Serial.println("here");
+          strcpy(sending,zero);
+          strcat(sending,ID);
+          strcat(sending,cmd);
+        }
+        else if (strlen(ID) == 2)
+        {
+          strcpy(sending,ID);
+          strcat(sending,cmd);
+        }
+        strcat(sending, " DELAY");
+        Serial.println(sending);
+        Serial.println(strlen(sending));
+        radio.send(Node_IDs[i], sending, strlen(sending));
+  
+        now = micros();
+        while(1)
         {
           time3 = micros();
-          if ((char)radio.DATA[radio.DATALEN - 14] == 'D' && 
-              (char)radio.DATA[radio.DATALEN - 13] == 'E' &&
-              (char)radio.DATA[radio.DATALEN - 12] == 'L' && 
-              (char)radio.DATA[radio.DATALEN - 11] == 'A' && 
-              (char)radio.DATA[radio.DATALEN - 10] == 'Y' &&
-              (char)radio.DATA[radio.DATALEN - 9 ] == ' ' &&
-              (char)radio.DATA[radio.DATALEN - 8 ] == 'R' && 
-              (char)radio.DATA[radio.DATALEN - 7 ] == 'E' && 
-              (char)radio.DATA[radio.DATALEN - 6 ] == 'C' &&
-              (char)radio.DATA[radio.DATALEN - 5 ] == 'E' &&
-              (char)radio.DATA[radio.DATALEN - 4 ] == 'I' && 
-              (char)radio.DATA[radio.DATALEN - 3 ] == 'V' &&
-              (char)radio.DATA[radio.DATALEN - 2 ] == 'E' &&
-              (char)radio.DATA[radio.DATALEN - 1 ] == 'D')
+          if (radio.receiveDone())
           {
-            commDelay[0] = time3 - now;
-            Serial.println(commDelay[0]);
-            Serial.println("Received delay response");
-            break;      
+            time3 = micros();
+            if ((char)radio.DATA[radio.DATALEN - 14] == 'D' && 
+                (char)radio.DATA[radio.DATALEN - 13] == 'E' &&
+                (char)radio.DATA[radio.DATALEN - 12] == 'L' && 
+                (char)radio.DATA[radio.DATALEN - 11] == 'A' && 
+                (char)radio.DATA[radio.DATALEN - 10] == 'Y' &&
+                (char)radio.DATA[radio.DATALEN - 9 ] == ' ' &&
+                (char)radio.DATA[radio.DATALEN - 8 ] == 'R' && 
+                (char)radio.DATA[radio.DATALEN - 7 ] == 'E' && 
+                (char)radio.DATA[radio.DATALEN - 6 ] == 'C' &&
+                (char)radio.DATA[radio.DATALEN - 5 ] == 'E' &&
+                (char)radio.DATA[radio.DATALEN - 4 ] == 'I' && 
+                (char)radio.DATA[radio.DATALEN - 3 ] == 'V' &&
+                (char)radio.DATA[radio.DATALEN - 2 ] == 'E' &&
+                (char)radio.DATA[radio.DATALEN - 1 ] == 'D')
+            {
+              commDelay[i] = time3 - now;
+              Serial.println(commDelay[i]);
+              Serial.println("Received delay response");
+              break;      
+            }
           }
-        }
-        if ( time3 - now > 500000)
-        {
-          //didnt receive, so resend
-          radio.send(Node_IDs[0], sending, strlen(sending));
-          Serial.println("Resent CHG SENSOR");
-          now = micros();
+          if ( time3 - now > 500000)
+          {
+            //didnt receive, so resend
+            radio.send(Node_IDs[i], sending, strlen(sending));
+            Serial.println("Resent CHG SENSOR");
+            now = micros();
+          }
         }
       }
     }
+
+    
     if (input == '1')
     {
       resetFlashAddr();
