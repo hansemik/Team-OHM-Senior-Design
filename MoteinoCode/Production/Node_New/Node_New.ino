@@ -40,11 +40,11 @@
 
 #define SERIAL_BAUD     115200
 
-#define SAMPLE_FREQ     10 //(in milliseconds)
+#define SAMPLE_FREQ     10 //(in milliseconds) max of about 1 second
 #define SAMPLE_TIME     5 //(in seconds)
 #define NUM_SAMPLES     ( 1000 / SAMPLE_FREQ * SAMPLE_TIME )
 int samples_taken = 0;
-int timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
+uint32_t timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
 
 int TRANSMITPERIOD = 10; //transmit a packet to gateway so often (in ms)
 char payload[] = "1234";
@@ -56,6 +56,7 @@ bool promiscuousMode = true; //set to 'true' to sniff all packets on the same ne
 uint32_t addr = 0000;
 char HUB_ID[] = "00";
 
+unsigned long now;
 unsigned long time1;
 unsigned long time2;
 signed long diff;
@@ -203,8 +204,15 @@ float adc_voltage;
 uint8_t user_command;
 uint8_t adc_command;                             // The LTC1867 command byte
 uint16_t adc_code = 0;                           // The LTC1867 code
-int i,count = 0;
+int i,j,count,counter = 0;
 char input;
+int hello = 0;
+int cmd;
+
+//For conversion
+char BTC_array[3];
+byte CTB;
+char zero[] = "0";
 
 void loop() 
 {
@@ -254,29 +262,21 @@ void loop()
       Serial.print("delay = ");
       Serial.println(time2 - time1);
     }
+    
     if (input == 'd') //d=dump flash area
     {
       Serial.println("Flash content:");
-      uint16_t counter = 0;
-
-      Serial.print("0-6000: ");
-      while(counter<=6000){
-        Serial.print(flash.readByte(counter++), HEX);
-        Serial.print('.');
-      }
-      while(flash.busy());
-      Serial.println();
-    }
-    
-    if (input == '0') //d=dump flash area
-    {
-      Serial.println("Flash content:");
-      uint16_t counter = 0;
-
-      Serial.print("0-256: ");
-      while(counter<=256){
-        Serial.print(flash.readByte(BLOCKS[0] +(counter++)), HEX);
-        Serial.print('.');
+      int counter = 0;
+      //Serial.print("0-255: ");
+      for (i = 0; i < 8; i++)
+      {
+        counter = 0;
+        Serial.println("Next sector");
+        while(counter<=600){
+          Serial.print(flash.readByte(ChNStartPos[i] + counter), HEX);
+          Serial.print('.');
+          counter++;
+        }
       }
       while(flash.busy());
       Serial.println();
@@ -346,15 +346,38 @@ void loop()
       Serial.println(" CMD 2 - ACK sent.");
     }
 
-    int ID = idParser();
-    if (ID == 99 || ID == NODEID)
+    int id = idParser();
+    if (id == 99 || id == NODEID)
     {
       Serial.println("Initiate cmd");
 
-      int cmd = cmdParser();
+      cmd = cmdParser();
       if (cmd == 0)
       {
+        char cmd_char[10];
+        itoa(cmd, cmd_char, 10);
+        char sending[50] = " ";
+        char ID[2] = {' ', ' '};
+        itoa(NODEID, ID, 10);
+        
         //cmd 0 Send back packet immediately (Delay computation)
+        if (strlen(ID) == 1)
+        {
+          //Serial.println("here");
+          strcpy(sending,zero);
+          strcat(sending,ID);
+          strcat(sending,cmd_char);
+          Serial.println(cmd_char);
+        }
+        else if (strlen(ID) == 2)
+        {
+          strcpy(sending,ID);
+          strcat(sending,cmd_char);
+        }
+        strcat(sending," DELAY RECEIVED");
+        Serial.println(sending);
+        Serial.println(strlen(sending));
+        radio.send(GATEWAYID, sending, strlen(sending));
       }
 
       if (cmd == 1)
@@ -370,19 +393,199 @@ void loop()
 
       if (cmd == 2)
       {
-        currBlockMax = ChNCurrPos[0];
+        //currBlockMax = ChNCurrPos[0];
         //block0pos = 0;
         //cmd 2 Send data
-        resetFlashAddr();
+        //resetFlashAddr();
         char cmd_char[10];
         itoa(cmd, cmd_char, 10);
         char sending[50] = " ";
         char ID[2] = {' ', ' '};
         itoa(NODEID, ID, 10);
+
+        char space[2] = {' ', '\0'};
+        char code[] = " ";
+        uint32_t p;
+        uint32_t p1;
+        byte d;
+        char b;
+        char b1[3] = {' ', ' ', '\0'};
+
+        
+        for (i = 0; i < 8; i++)
+        {
+          //Loop through all channels (0-7)
+          currBlockMax = ChNCurrPos[i];
+          ChNCurrPos[i] = 0;
+          Serial.print("CurrCH: ");
+          Serial.println(i);
+          Serial.print("CurrBlockMax: ");
+          Serial.println(currBlockMax);
+          while (currBlockMax > ChNCurrPos[i])
+          {
+            Serial.println();
+            Serial.println();
+            counter++;
+            Serial.print("Counter: ");
+            Serial.println(counter);
+            if (strlen(ID) == 1)
+            {
+              Serial.println("here");
+              strcpy(sending,zero);
+              strcat(sending,ID);
+              strcat(sending,cmd_char);
+              Serial.println(cmd_char);
+            }
+            else if (strlen(ID) == 2)
+            {
+              strcpy(sending,ID);
+              strcat(sending,cmd_char);
+            }
+
+            Serial.print("Sending size: ");
+            Serial.println(strlen(sending));
+            
+
+            for (j = 0; j < 8; j++)
+            {
+              if (currBlockMax <= ChNCurrPos[i])
+                break;
+              //Send 8 readings
+              strcat(sending," ");
+              
+              //Serial.print("Sending size: ");
+              //Serial.println(strlen(sending));
+              
+              //Serial.print("Pos within Block: ");
+              //Serial.println(ChNCurrPos[0]);
+              
+              p = BLOCKS[0] + ChNStartPos[i]+ ChNCurrPos[i];
+              d = flash.readByte(p);
+              byteToChar(d);
+              ChNCurrPos[i] = ChNCurrPos[i] + 1;
+              strcat(sending,BTC_array);
+              
+              p = BLOCKS[0] + ChNStartPos[i]+ ChNCurrPos[i];
+              d = flash.readByte(p);
+              byteToChar(d);
+              ChNCurrPos[i] = ChNCurrPos[i] + 1;
+              strcat(sending,BTC_array);
+              
+              Serial.print("Read flash: ");
+              Serial.println(BTC_array);
+
+              Serial.print("Pos: ");
+              Serial.println(p);
+              Serial.print("Block Start Pos: ");
+              Serial.println(ChNStartPos[i]);
+              Serial.print("Pos within Block: ");
+              Serial.println(ChNCurrPos[i]);
+
+              
+
+  
+              //Serial.print("Sending size: ");
+              //Serial.println(strlen(sending));
+            }
+    
+            //Serial.flush();
+            Serial.print("Sending: ");
+            Serial.println(sending);
+            Serial.print("Sending size: ");
+            Serial.println(strlen(sending));
+            Serial.print("ChNCurrPos: ");
+            Serial.println(ChNCurrPos[i]);
+            Serial.flush();
+    
+            int retry_count = 0;
+
+            delay(10);
+            radio.send(GATEWAYID, sending, strlen(sending));
+    
+    //        while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
+    //        {
+    //          retry_count++;
+    //          if (retry_count > 3)
+    //          {
+    //            Serial.println("Error: Can't communicate(Send DATA)");
+    //            break;
+    //          }
+    //        }
+    
+    //        while(1)
+    //        {
+    //          //Wait for next cmd
+    //          if (radio.receiveDone());
+    //        }
+          }
+  
+          //Send change sensor CMD
+          //Wait for response
+          //Then continue
+          if (strlen(ID) == 1)
+          {
+            //Serial.println("here");
+            //char zero[] = "0";
+            strcpy(sending,zero);
+            strcat(sending,ID);
+            strcat(sending,cmd_char);
+            Serial.println(cmd_char);
+          }
+          else if (strlen(ID) == 2)
+          {
+            strcpy(sending,ID);
+            strcat(sending,cmd_char);
+          }
+          strcat(sending," CHG SENSOR");
+  
+          delay(10);
+          radio.send(GATEWAYID, sending, strlen(sending));
+          //radio.send(GATEWAYID, sending, strlen(sending)); // Need second DONE command?????
+          Serial.print("Sent CHG SENSOR:");
+          Serial.println(sending);
+          Serial.println(strlen(sending));
+
+          now = micros();
+          while(1)
+          {
+            time1 = micros();
+            if (radio.receiveDone())
+            {
+
+              if ((char)radio.DATA[radio.DATALEN - 12] == 'C' && 
+                  (char)radio.DATA[radio.DATALEN - 11] == 'H' && 
+                  (char)radio.DATA[radio.DATALEN - 10] == 'G' &&
+                  (char)radio.DATA[radio.DATALEN - 9 ] == ' ' &&
+                  (char)radio.DATA[radio.DATALEN - 8 ] == 'R' && 
+                  (char)radio.DATA[radio.DATALEN - 7 ] == 'E' && 
+                  (char)radio.DATA[radio.DATALEN - 6 ] == 'C' &&
+                  (char)radio.DATA[radio.DATALEN - 5 ] == 'E' &&
+                  (char)radio.DATA[radio.DATALEN - 4 ] == 'I' && 
+                  (char)radio.DATA[radio.DATALEN - 3 ] == 'V' &&
+                  (char)radio.DATA[radio.DATALEN - 2 ] == 'E' &&
+                  (char)radio.DATA[radio.DATALEN - 1 ] == 'D')
+              {
+                Serial.println("Received chg done");
+                break;      
+              }
+
+            }
+            if ( time1 - now > 500000)
+            {
+              radio.send(GATEWAYID, sending, strlen(sending));
+              Serial.println("Resent CHG SENSOR");
+              now = micros();
+            }
+          }
+          
+        }
+        
+        //Done with all data, send completion command
+
         if (strlen(ID) == 1)
         {
-          Serial.println("here");
-          char zero[] = "0";
+          //Serial.println("here");
+          //char zero[] = "0";
           strcpy(sending,zero);
           strcat(sending,ID);
           strcat(sending,cmd_char);
@@ -393,72 +596,14 @@ void loop()
           strcpy(sending,ID);
           strcat(sending,cmd_char);
         }
-        
-        char space[] = " ";
-        char code[] = " ";
-        uint32_t p;
-        uint32_t p1;
-        byte d;
-        char b;
-        char b1[1] = {' '};
-        for (i = 0; i < 8; i++)
-        {
-          strcat(sending," ");
-          Serial.println();
-          Serial.println();
-          Serial.print("Pos within Block: ");
-          Serial.println(ChNCurrPos[0]);
-          
-          //itoa(flash.readByte(*BLOCKS[0] + *blockPos[0]),code,16);
-          p = BLOCKS[0] + ChNStartPos[0]+ ChNCurrPos[0];
-          //p1 = ChNCurrPos[0];
-          d = flash.readByte(p);
-          b = d;
-          b1[0] = {b};
-          //char hi = adc_code >> 8;
-          //sprintf(code, "%x", d);
-          Serial.print("Read flash: ");
-          Serial.println(b1);
-          //Serial.print("code: ");
-          //Serial.println(code);
 
-          Serial.flush();
-          Serial.print("Pos: ");
-          Serial.println(p);
-          Serial.print("Pos within Block: ");
-          Serial.println(ChNStartPos[0]);
-          Serial.print("Block Pos: ");
-          Serial.println(BLOCKS[0]);
-          ChNCurrPos[0] = ChNCurrPos[0] + 1;
-          //block0pos = block0pos + 1;
-          //(*blockPos[0])++;
-          
-          strcat(sending,b1);
-        }
-
-        Serial.flush();
+        strcat(sending," DONE");
+        delay(10);
+        radio.send(GATEWAYID, sending, strlen(sending));
+        radio.send(GATEWAYID, sending, strlen(sending)); // Need second DONE command?????
+        Serial.print("Sent DONE:");
         Serial.println(sending);
         Serial.println(strlen(sending));
-
-        int retry_count = 0;
-
-        radio.send(GATEWAYID, sending, strlen(sending));
-
-//        while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 5, 100))
-//        {
-//          retry_count++;
-//          if (retry_count > 3)
-//          {
-//            Serial.println("Error: Can't communicate(Send DATA)");
-//            break;
-//          }
-//        }
-
-//        while(1)
-//        {
-//          //Wait for next cmd
-//          if (radio.receiveDone());
-//        }
       }
 
       Serial.println("After 2");
@@ -483,9 +628,11 @@ void loop()
             timer_rdy = 0;     
                
             readADC();
+            //adc_command, &ADCcode[i]
             Serial.println("Read Complete");
             writeADCtoFlash();
             Serial.println("Write Complete");
+            Serial.flush();
             samples_taken ++;
           }
           Serial.println("Im stuck");
@@ -496,6 +643,7 @@ void loop()
       }
       Serial.println("End Receive");
       Serial.flush();
+      
     }
 
 //    if (radio.ACKRequested())
@@ -505,9 +653,21 @@ void loop()
 //    }
 //    Blink(LED,3);
 //    Serial.println();
+    Serial.println("Crash before here?");
+    Serial.flush();
+    hello = 1;
   }
   //Serial.println("loop");
   //Serial.flush();
+
+  if (hello == 1)
+  {
+    Serial.println("Outside Receive");
+    Serial.flush();
+    hello = 0;
+  }
+
+
 }
 
 ISR (TIMER1_OVF_vect)
@@ -551,75 +711,39 @@ void readADC()
 
 void writeADCtoFlash()
 {
-  char val[4];
+  char val[3] = {' ', ' ', '\0'};
+  byte lo,hi;
 
   for (i = 0; i < 8; i++)
   {
-    sprintf(val, "%x", ADCcode[i]);
+
+    lo = ADCcode[i] & 0xFF;
+    val[1] = lo;
+    hi = ADCcode[i] >> 8;
+    val[0] = hi;
+
+    //sprintf(hi1, "%x", hi);
+    
     //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
-    flash.writeBytes(ChNStartPos[i] + ChNCurrPos[i], val, strlen(val));
+    //flash.writeBytes(ChNStartPos[i] + ChNCurrPos[i], val, strlen(val));
+
+    flash.writeByte(ChNStartPos[i] + ChNCurrPos[i], hi);
+    ChNCurrPos[i] = ChNCurrPos[i] + 1;
+    flash.writeByte(ChNStartPos[i] + ChNCurrPos[i], lo);   
+    ChNCurrPos[i] = ChNCurrPos[i] + 1;
+    Serial.print("Pos: ");
     Serial.println(ChNStartPos[i] + ChNCurrPos[i]);
     //block0pos = block0pos + strlen(val);
-    ChNCurrPos[i] = ChNCurrPos[i] + strlen(val);
+    //ChNCurrPos[i] = ChNCurrPos[i] + strlen(val);
+    Serial.print("ADCcode: ");
+    Serial.println(ADCcode[i]);
     //Serial.println(block0pos);
-    Serial.println(val);
+    Serial.print("Hig: ");
+    Serial.println(hi);
+    Serial.print("Low: ");
+    Serial.println(lo);
     //Serial.println(ADCcode[CH0]);
   }
-
-  
-//#ifdef CH0
-//  sprintf(val, "%x", ADCcode[CH0]);
-//  //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
-//  flash.writeBytes(BLOCKS[0] + ChNCurrPos[0], val, strlen(val));
-//  Serial.println(BLOCKS[0] + blockPos[0]);
-//  //block0pos = block0pos + strlen(val);
-//  blockPos[0] = blockPos[0] + strlen(val);
-//  //Serial.println(block0pos);
-//  Serial.println(val);
-//  //Serial.println(ADCcode[CH0]);
-//#endif
-//
-//#ifdef CH1
-//  sprintf(val, "%x", ADCcode[CH1]);
-//  flash.writeBytes(BLOCKS[1] + ChNCurrPos[1], val, strlen(val));
-//  block1pos = block1pos + strlen(val);
-//#endif
-//
-//#ifdef CH2
-//  sprintf(val, "%x", ADCcode[CH2]);
-//  flash.writeBytes(BLOCKS[2] + ChNCurrPos[1], val, strlen(val));
-//  block2pos = block2pos + strlen(val);
-//#endif
-//
-//#ifdef CH3
-//  sprintf(val, "%x", ADCcode[CH3]);
-//  flash.writeBytes(BLOCKS[3] + block3pos, val, strlen(val));
-//  block3pos = block3pos + strlen(val);
-//#endif
-//
-//#ifdef CH4
-//  sprintf(val, "%x", ADCcode[CH4]);
-//  flash.writeBytes(BLOCK[4] + block4pos, val, strlen(val));
-//  block4pos = block4pos + strlen(val);
-//#endif
-//
-//#ifdef CH5
-//  sprintf(val, "%x", ADCcode[CH5]);
-//  flash.writeBytes(BLOCK[5] + block5pos, val, strlen(val));
-//  block5pos = block5pos + strlen(val);
-//#endif
-//
-//#ifdef CH6
-//  sprintf(val, "%x", ADCcode[CH6]);
-//  flash.writeBytes(BLOCK[6] + block6pos, val, strlen(val));
-//  block6pos = block6pos + strlen(val);
-//#endif
-//
-//#ifdef CH7
-//  sprintf(val, "%x", ADCcode[CH7]);
-//  flash.writeBytes(BLOCK[7] + block2pos, val, strlen(val));
-//  block7pos = block7pos + strlen(val);
-//#endif
 }
 
 
@@ -627,23 +751,6 @@ void resetFlashAddr()
 {
   for (int i = 0; i < 7; i++)
     ChNCurrPos[i] = 0;
-    
-//  block0pos = 0;
-//  block1pos = 0;
-//  block2pos = 0;
-//  block3pos = 0;
-//  block4pos = 0;
-//  block5pos = 0;
-//  block6pos = 0;
-//  block7pos = 0;
-//  block8pos = 0;
-//  block9pos = 0;
-//  block10pos = 0;
-//  block11pos = 0;
-//  block12pos = 0;
-//  block13pos = 0;
-//  block14pos = 0;
-//  block15pos = 0;
 }
 
 void flushSerial() {
@@ -756,4 +863,189 @@ uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
   buff[buffidx] = 0;  // null term
   return buffidx;
 }
+
+void byteToChar(byte b)
+{
+  uint8_t nibbles[2];
+  nibbles[0] = b >> 4; //high nibble
+  nibbles[1] = b & 0xF; //low nibble
+
+  for (int btc = 0; btc < 2; btc++)
+  {
+    switch (nibbles[btc])
+    {
+      case 0x0:
+        BTC_array[btc] = '0';
+        break;
+
+      case 0x1:
+        BTC_array[btc] = '1';
+        break;    
+        
+      case 0x2:
+        BTC_array[btc] = '2';
+        break;
+
+      case 0x3:
+        BTC_array[btc] = '3';
+        break;
+        
+      case 0x4:
+        BTC_array[btc] = '4';
+        break;
+
+      case 0x5:
+        BTC_array[btc] = '5';
+        break;
+
+      case 0x6:
+        BTC_array[btc] = '6';
+        break;
+
+      case 0x7:
+        BTC_array[btc] = '7';
+        break;
+
+       case 0x8:
+        BTC_array[btc] = '8';
+        break;
+
+      case 0x9:
+        BTC_array[btc] = '9';
+        break;      
+        
+      case 0xA:
+        BTC_array[btc] = 'A';
+        break;
+
+      case 0xB:
+        BTC_array[btc] = 'B';
+        break;
+        
+      case 0xC:
+        BTC_array[btc] = 'C';
+        break;
+
+      case 0xD:
+        BTC_array[btc] = 'D';
+        break;
+
+      case 0xE:
+        BTC_array[btc] = 'E';
+        break;
+
+      case 0xF:
+        BTC_array[btc] = 'F';
+        break;
+
+      default:
+        Serial.println("BTC ERROR");
+        break;
+    }
+  }
+  
+  BTC_array[2] = '\0';
+}
+
+void charToByte(char c, char c1)
+{
+  char array[2] = {c, c1};
+  byte lo,hi;
+  byte CTB_array[2];
+
+  for (int ctb = 0; ctb < 2; ctb++)
+  {
+    switch (array[ctb])
+    {
+      case '0':
+        CTB_array[ctb] = 0x0;
+        break;
+
+      case '1':
+        CTB_array[ctb] = 0x1;
+        break; 
+        
+      case '2':
+        CTB_array[ctb] = 0x2;
+        break;
+
+      case '3':
+        CTB_array[ctb] = 0x3;
+        break;
+          
+      case '4':
+        CTB_array[ctb] = 0x4;
+        break;
+
+      case '5':
+        CTB_array[ctb] = 0x5;
+        break; 
+         
+      case '6':
+        CTB_array[ctb] = 0x6;
+        break;
+
+      case '7':
+        CTB_array[ctb] = 0x7;
+        break;  
+        
+      case '8':
+        CTB_array[ctb] = 0x8;
+        break;
+        
+      case '9':
+        CTB_array[ctb] = 0x9;
+        break; 
+         
+      case 'A':
+        CTB_array[ctb] = 0xA;
+        break;
+
+      case 'B':
+        CTB_array[ctb] = 0xB;
+        break; 
+         
+      case 'C':
+        CTB_array[ctb] = 0xC;
+        break;
+
+      case 'D':
+        CTB_array[ctb] = 0xD;
+        break; 
+        
+      case 'E':
+        CTB_array[ctb] = 0xE;
+        break;
+
+      case 'F':
+        CTB_array[ctb] = 0xF;
+        break;
+              
+      default:
+        Serial.println("BTC ERROR");
+        break;
+    }
+  }
+
+  CTB = (CTB_array[0] << 4) || (CTB_array[1]);
+}
+
+int freeRam () {
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
