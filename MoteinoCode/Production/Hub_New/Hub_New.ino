@@ -26,6 +26,8 @@
 
 #define SERIAL_BAUD   115200
 
+#define AUTOMATED 1
+
 #ifdef __AVR_ATmega1284P__
   #define LED           15 // Moteino MEGAs have LEDs on D15
   #define FLASH_SS      23 // and FLASH SS on D23
@@ -63,8 +65,6 @@ uint8_t _TIMSK1;
 uint8_t Node_IDs[16] = {02,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00};
 int num_nodes = 1;
 uint8_t commDelay[16] = {00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00};
-
-
 
 
                         //Address of flash blocks
@@ -138,6 +138,10 @@ uint32_t packetCount = 0;
 char BTC_array[3];
 byte CTB;
 
+uint16_t tenMinCounter = 0;
+uint8_t oneMinCounter = 0;
+bool waitOneMin = false;
+
 char input;
 
 void loop() {
@@ -149,6 +153,36 @@ void loop() {
     timer_rdy = 0;
     //Serial.println(diff);
   }
+
+#ifdef AUTOMATED
+  if (timer_rdy == 1)
+  {
+    timer_rdy = 0;
+    
+    tenMinCounter++;
+    if (tenMinCounter >= 600)
+    {
+      input = '3'; //Start data capture
+      tenMinCounter = 0;
+      waitOneMin = true;
+    }
+
+    if(waitOneMin)
+    {
+      oneMinCounter++;
+    }
+
+    if(oneMinCounter >= 60)
+    {
+      input = '2'; //Start data collection
+      oneMinCounter = 0;
+      waitOneMin = false;
+    }
+    
+  }
+#endif
+
+
   if (Serial.available() > 0)
   {
     input = Serial.read();
