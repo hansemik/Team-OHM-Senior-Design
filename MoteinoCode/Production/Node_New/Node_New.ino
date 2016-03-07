@@ -271,7 +271,9 @@ void loop()
       for (i = 0; i < 8; i++)
       {
         counter = 0;
-        Serial.println("Next sector");
+        Serial.println();
+        Serial.print("Next sector: ");
+        Serial.println(ChNStartPos[i]);
         while(counter<=600){
           Serial.print(flash.readByte(ChNStartPos[i] + counter), HEX);
           Serial.print('.');
@@ -721,11 +723,11 @@ void writeADCtoFlash()
     val[1] = lo;
     hi = ADCcode[i] >> 8;
     val[0] = hi;
+    Serial.print("i: ");
+    Serial.println(i);
 
-    //sprintf(hi1, "%x", hi);
-    
-    //flash.writeBytes(BLOCK0 + block0pos, val, strlen(val));
-    //flash.writeBytes(ChNStartPos[i] + ChNCurrPos[i], val, strlen(val));
+    Serial.print("ADCcode[i]: ");
+    Serial.println(ADCcode[i]);
 
     flash.writeByte(ChNStartPos[i] + ChNCurrPos[i], hi);
     ChNCurrPos[i] = ChNCurrPos[i] + 1;
@@ -735,8 +737,8 @@ void writeADCtoFlash()
     Serial.println(ChNStartPos[i] + ChNCurrPos[i]);
     //block0pos = block0pos + strlen(val);
     //ChNCurrPos[i] = ChNCurrPos[i] + strlen(val);
-    Serial.print("ADCcode: ");
-    Serial.println(ADCcode[i]);
+    //Serial.print("ADCcode: ");
+    //Serial.println(ADCcode[i]);
     //Serial.println(block0pos);
     Serial.print("Hig: ");
     Serial.println(hi);
@@ -810,10 +812,6 @@ void unsetTimer1()
 //Returns value of ID in command string
 int idParser()
 {
-//  for (byte i = 0; i < radio.DATALEN; i++)
-//    Serial.print((char)radio.DATA[i]);
-//  Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
-
   //ID is first two bytes in DATA array
   char ID[] = {(char)radio.DATA[0],(char)radio.DATA[1]};
   return atoi(ID);

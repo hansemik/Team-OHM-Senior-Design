@@ -36,7 +36,7 @@
   #define FLASH_SS      8 // and FLASH SS on D8
 #endif
 
-#define SAMPLE_FREQ     1000 //(in milliseconds) max of about 1 second
+#define SAMPLE_FREQ     1000 //(in milliseconds) max of about 1.04 seconds
 #define SAMPLE_TIME     5 //(in seconds)
 #define NUM_SAMPLES     ( 1000 / SAMPLE_FREQ * SAMPLE_TIME )
 int samples_taken = 0;
@@ -186,6 +186,8 @@ void loop() {
   if (Serial.available() > 0)
   {
     input = Serial.read();
+  }
+    
     if (input == 'r') //d=dump all register values
       radio.readAllRegs();
     if (input == 'E') //E=enable encryption
@@ -207,7 +209,9 @@ void loop() {
       for (i = 0; i < 8; i++)
       {
         counter = 0;
-        Serial.println("Next sector");
+        Serial.println();
+        Serial.print("Next sector: ");
+        Serial.println(ChNStartPos[i]);
         while(counter<=600){
           Serial.print(flash.readByte(ChNStartPos[i] + counter), HEX);
           Serial.print('.');
@@ -638,8 +642,6 @@ void loop() {
       }
 
     }
-    
-  }
 
   
 
