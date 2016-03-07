@@ -327,6 +327,20 @@ void loop()
       Serial.print(" from flash.");
       Serial.println();
     }
+
+    if (input == 'a')
+    {
+      readADC();
+      writeADCtoFlash();
+      uint16_t code1;
+      for (i = 0; i < 8; i++)
+      {
+        code1 = ADCcode[i];
+        Serial.print("ADC CH");
+        Serial.print(i);
+        Serial.println(code1);
+      }
+    }
   }
 
 
@@ -714,7 +728,7 @@ void readADC()
 {
   for (i = 0; i < 8; i++)
   {
-    adc_command = BUILD_COMMAND_SINGLE_ENDED[i] | uni_bi_polar;   // Build ADC command for channel 0
+    adc_command = BUILD_COMMAND_SINGLE_ENDED[i] | uni_bi_polar;   // Build ADC command for channel i
     LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Throws out last reading
     LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Takes reading
   }
