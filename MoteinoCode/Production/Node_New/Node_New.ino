@@ -35,7 +35,7 @@
 #else
   #define LED           9 // Moteinos have LEDs on D9
   #define FLASH_SS      8 // and FLASH SS on D8
-  #define LTC1867L_SS   7 // Pin for chip select of ADC
+  #define LTC1867L_SS   A3 // Pin for chip select of ADC
 #endif
 
 #define SERIAL_BAUD     115200
@@ -196,6 +196,9 @@ void setup() {
 #ifdef ENABLE_ATC
   Serial.println("RFM69_ATC Enabled (Auto Transmission Control)\n");
 #endif
+
+  quikeval_SPI_init();
+  pinMode(LTC1867L_SS, OUTPUT);
 }
 
 long lastPeriod = 0;
@@ -613,6 +616,12 @@ void loop()
 
       if (cmd == 3)
       {
+          
+        Serial.print("Erasing Flash chip ... ");
+        flash.chipErase();
+        while(flash.busy());
+        Serial.println("DONE");
+        
         //cmd3 Start data capture
         setTimer1();
         resetFlashAddr();

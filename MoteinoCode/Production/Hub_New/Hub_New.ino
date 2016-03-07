@@ -26,7 +26,7 @@
 
 #define SERIAL_BAUD   115200
 
-#define AUTOMATED 1
+//#define AUTOMATED 1
 
 #ifdef __AVR_ATmega1284P__
   #define LED           15 // Moteino MEGAs have LEDs on D15
