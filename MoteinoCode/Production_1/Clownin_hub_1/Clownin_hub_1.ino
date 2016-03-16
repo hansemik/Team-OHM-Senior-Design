@@ -26,7 +26,7 @@
 
 #define SERIAL_BAUD   9600
 
-//#define AUTOMATED 1
+#define AUTOMATED 1
 
 #ifdef __AVR_ATmega1284P__
   #define LED           15 // Moteino MEGAs have LEDs on D15
@@ -132,12 +132,12 @@ void setup() {
 //  Serial.print("DDRD = ");
 //  Serial.println(reg, BIN);
 
-  DDRD |= 1 << 3;
-  PORTD |= 1 << 3;
+  DDRD |= 1 << 4;
+  PORTD |= 1 << 4;
   delay(10);
-  PORTD ^= 1 << 3;
+  PORTD ^= 1 << 4;
   delay(100);
-  PORTD |= 1 << 3;
+  PORTD |= 1 << 4;
   delay(100);
 
 //  DDRD |= 1 << 3;
@@ -229,9 +229,10 @@ uint32_t packetCount = 0;
 char BTC_array[3];
 byte CTB;
 
-uint16_t tenMinCounter = 0;
-uint8_t oneMinCounter = 0;
+uint16_t tenMinCounter = 54000;
+uint16_t oneMinCounter = 0;
 bool waitOneMin = false;
+bool send3G = false;
 
 char input;
 
@@ -239,6 +240,13 @@ char input;
 
 void loop() {
   //process any serial input
+  input = '\0';
+  //Serial.print("d=");
+  //Serial.println(diff);
+  if (send3G)
+  {
+    input = '4';
+  }
 
   if(fonaSS.available()){
     Serial.write(fonaSS.read());
@@ -251,28 +259,33 @@ void loop() {
    }
 
 #ifdef AUTOMATED
-  if (timer_rdy == 1)
+  if (timer_rdy == 1 && send3G == false)
   {
     timer_rdy = 0;
-    
+
+    Serial.print("t=");
+    Serial.println(tenMinCounter);
+    Serial.print("o=");
+    Serial.println(oneMinCounter);
     tenMinCounter++;
-    if (tenMinCounter >= 60000)
+    if (tenMinCounter >= 60000)  //Timer set to 10ms, so 60000 is 10 minutes
     {
       input = '3'; //Start data capture
       tenMinCounter = 0;
       waitOneMin = true;
     }
 
-    if(waitOneMin)
-    {
-      oneMinCounter++;
-    }
+//    if(waitOneMin)
+//    {
+//      oneMinCounter++;
+//    }
 
-    if(oneMinCounter >= 60)
+    if(oneMinCounter >= 6000)
     {
       input = '2'; //Start data collection
       oneMinCounter = 0;
       waitOneMin = false;
+      send3G = true;
     }
     
   }
@@ -343,6 +356,7 @@ void loop() {
     if (input == '2')
     {
       //cmd2 Get Data
+      Serial.print("cmd2\n");
       resetFlashAddr();
 
       Serial.print("Deleting Flash chip ... ");
@@ -499,6 +513,7 @@ void loop() {
     
     if (input == '3')
     {
+      Serial.print("cmd3\n");
       //Transmit command with ID of 02
       char cmd[] = "3";
       char ID[2] = {' ', ' '};
@@ -531,8 +546,9 @@ void loop() {
     }
 
 
-  if(input == '4')
-  {
+    if(input == '4')
+    {
+      Serial.print("cmd4\n");
       char buffer[760];
       int channel;
       int sample_period = 0;
@@ -626,7 +642,7 @@ void loop() {
       }
       Serial.print("counter = ");
       Serial.println(counter);
-
+      send3G = false;
     }
     
     if(input == 'M'){
@@ -660,6 +676,16 @@ ISR (TIMER1_OVF_vect)
     diff = time2 - time1;
     switch_flag = 1;
   }
+
+
+#ifdef AUTOMATED
+  tenMinCounter++;
+
+  if(waitOneMin)
+  {
+    oneMinCounter++;
+  }
+#endif
 }
 
 void setTimer1()

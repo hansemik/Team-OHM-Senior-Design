@@ -41,7 +41,7 @@
 #define SERIAL_BAUD     9600
 
 #define SAMPLE_FREQ     10 //(in milliseconds) max of about 1 second
-#define SAMPLE_TIME     1.5 //(in seconds)
+#define SAMPLE_TIME     1 //(in seconds)
 #define NUM_SAMPLES     ( (1000 / SAMPLE_FREQ) * SAMPLE_TIME )
 int samples_taken = 0;
 uint32_t timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
@@ -217,7 +217,7 @@ void loop()
     
     if (input == 'e')
     {
-      Serial.print("Erasing Flash chip ... ");
+      Serial.print("eErasing Flash chip ... ");
       flash.chipErase();
       while(flash.busy());
       Serial.println("DONE");
@@ -290,7 +290,7 @@ void loop()
     {
       //byte theNodeID = radio.SENDERID;
       radio.sendACK();
-      Serial.println(" CMD 2 - ACK sent.");
+      Serial.println(" CMD - ACK sent.");
     }
 
     int id = idParser();
@@ -511,19 +511,20 @@ void loop()
       if (cmd == 3)
       {
           
-        Serial.print("Erasing Flash chip ... ");
+        Serial.print("3Erasing Flash chip ... ");
         flash.chipErase();
         while(flash.busy());
         Serial.println("DONE");
-        
+      Serial.flush();        
         //cmd3 Start data capture
         setTimer1();
         resetFlashAddr();
         Serial.print("NUM_SAMPLES: ");
         Serial.println(NUM_SAMPLES);
-        
-        while (samples_taken < NUM_SAMPLES)
+      Serial.flush();        
+        do 
         {
+          //Serial.println(samples_taken);
           if (timer_rdy == 1)
           {
             timer_rdy = 0;     
@@ -532,8 +533,9 @@ void loop()
             writeADCtoFlash();
             samples_taken ++;
           }
-          printf("\n");
-        }
+          //samples_taken = samples_taken;
+          //Serial.print("h");
+        }while(samples_taken < NUM_SAMPLES);
         unsetTimer1();
         samples_taken = 0;        
       }
