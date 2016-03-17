@@ -229,7 +229,7 @@ uint32_t packetCount = 0;
 char BTC_array[3];
 byte CTB;
 
-uint16_t tenMinCounter = 54000;
+uint32_t tenMinCounter = 54000;
 uint16_t oneMinCounter = 0;
 bool waitOneMin = false;
 bool send3G = false;
@@ -268,7 +268,7 @@ void loop() {
     Serial.print("o=");
     Serial.println(oneMinCounter);
     tenMinCounter++;
-    if (tenMinCounter >= 60000)  //Timer set to 10ms, so 60000 is 10 minutes
+    if (tenMinCounter >= 90000)  //Timer set to 10ms, so 60000 is 10 minutes
     {
       input = '3'; //Start data capture
       tenMinCounter = 0;
