@@ -374,9 +374,6 @@ void loop()
         }
       }
 
-      Serial.println("After 2");
-
-
       if (cmd == 3)
       {
           
