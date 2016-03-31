@@ -149,8 +149,8 @@ void setup() {
 #endif
 
   quikeval_SPI_init();
-  //pinMode(LTC1867L_SS, OUTPUT);
-  DDRC = B11111111;
+  pinMode(LTC1867L_SS, OUTPUT);
+  //DDRC = B11111111;
 }
 
 long lastPeriod = 0;

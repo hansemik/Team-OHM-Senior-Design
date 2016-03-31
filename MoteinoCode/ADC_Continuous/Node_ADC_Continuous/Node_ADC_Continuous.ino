@@ -159,6 +159,7 @@ void loop() {
     Blink(LED,3);
     Serial.println();
   }
+  Blink(LED,3);
 }
 
 void Blink(byte PIN, int DELAY_MS)

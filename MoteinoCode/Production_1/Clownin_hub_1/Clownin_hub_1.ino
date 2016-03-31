@@ -40,7 +40,7 @@
 #endif
 
 #define SAMPLE_FREQ     10 //(in milliseconds) max of about 1.04 seconds
-#define SAMPLE_TIME     1.5 //(in seconds)
+#define SAMPLE_TIME     1 //(in seconds)
 #define NUM_SAMPLES     ( (1000 / SAMPLE_FREQ) * SAMPLE_TIME )
 int samples_taken = 0;
 uint32_t timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
