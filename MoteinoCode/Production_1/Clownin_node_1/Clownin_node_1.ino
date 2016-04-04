@@ -17,7 +17,7 @@
 //*********************************************************************************************
 //************ IMPORTANT SETTINGS - YOU MUST CHANGE/CONFIGURE TO FIT YOUR HARDWARE *************
 //*********************************************************************************************
-#define NODEID        02    //must be unique for each node on same network (range up to 254, 255 is used for broadcast)
+#define NODEID        03    //must be unique for each node on same network (range up to 254, 255 is used for broadcast)
 #define NETWORKID     100  //the same on all nodes that talk to each other (range up to 255)
 #define GATEWAYID     00
 //Match frequency to the hardware version of the radio on your Moteino (uncomment one):
@@ -30,18 +30,18 @@
 //*********************************************************************************************
 
 #ifdef __AVR_ATmega1284P__
-  #define LED           15 // Moteino MEGAs have LEDs on D15
-  #define FLASH_SS      23 // and FLASH SS on D23
+#define LED           15 // Moteino MEGAs have LEDs on D15
+#define FLASH_SS      23 // and FLASH SS on D23
 #else
-  #define LED           9 // Moteinos have LEDs on D9
-  #define FLASH_SS      8 // and FLASH SS on D8
-  #define LTC1867L_SS   A3 // Pin for chip select of ADC
+#define LED           9 // Moteinos have LEDs on D9
+#define FLASH_SS      8 // and FLASH SS on D8
+#define LTC1867L_SS   A3 // Pin for chip select of ADC
 #endif
 
 #define SERIAL_BAUD     9600
 
 #define SAMPLE_FREQ     10 //(in milliseconds) max of about 1 second
-#define SAMPLE_TIME     1 //(in seconds)
+#define SAMPLE_TIME     15 //(in seconds)
 #define NUM_SAMPLES     ( (1000 / SAMPLE_FREQ) * SAMPLE_TIME )
 int samples_taken = 0;
 uint32_t timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
@@ -49,7 +49,7 @@ uint32_t timer_sub = round(SAMPLE_FREQ * 62.5) - 1;
 int TRANSMITPERIOD = 10; //transmit a packet to gateway so often (in ms)
 char payload[] = "1234";
 char buff[20];
-byte sendSize=0;
+byte sendSize = 0;
 boolean requestACK = false;
 SPIFlash flash(FLASH_SS, 0xEF40); //EF40 for 8mbit  Windbond chip (W25X40CL)
 bool promiscuousMode = true; //set to 'true' to sniff all packets on the same network
@@ -74,10 +74,12 @@ uint8_t _TIMSK1;
 const uint32_t BLOCKS[16] = {0x000000, 0x010000, 0x020000, 0x030000,
                              0x040000, 0x050000, 0x060000, 0x070000,
                              0x080000, 0x090000, 0x0A0000, 0x0B0000,
-                             0x0C0000, 0x0D0000, 0x0E0000, 0x0F0000};
+                             0x0C0000, 0x0D0000, 0x0E0000, 0x0F0000
+                            };
 
 const uint16_t ChNStartPos[8] = {0x0000, 0x2000, 0x4000, 0x6000,
-                                 0x8000, 0xA000, 0xC000, 0xE000};
+                                 0x8000, 0xA000, 0xC000, 0xE000
+                                };
 
 uint16_t ChNCurrPos[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -94,47 +96,48 @@ uint16_t currBlockMax = 0;
 
 
 #ifdef ENABLE_ATC
-  RFM69_ATC radio;
+RFM69_ATC radio;
 #else
-  RFM69 radio;
+RFM69 radio;
 #endif
 
 static uint8_t uni_bi_polar = LTC1867_UNIPOLAR_MODE;    //!< The LTC1867 unipolar/bipolar mode selection
 static float LTC1867_lsb = 6.25009537E-5;               //!< Ideal LSB voltage for a perfect part
 static int32_t LTC1867_offset_unipolar_code = 0;        //!< Ideal unipolar offset for a perfect part
 static int32_t LTC1867_offset_bipolar_code = 0;         //!< Ideal bipolar offset for a perfect part
-uint16_t ADCcode[8] = {0,0,0,0,0,0,0,0};
+uint16_t ADCcode[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 //! Lookup table to build the command for single-ended mode, input with respect to GND
 const uint8_t BUILD_COMMAND_SINGLE_ENDED[8] = {LTC1867_CH0, LTC1867_CH1, LTC1867_CH2, LTC1867_CH3,
-    LTC1867_CH4, LTC1867_CH5, LTC1867_CH6, LTC1867_CH7}; //!< Builds the command for single-ended mode, input with respect to GND
+                                               LTC1867_CH4, LTC1867_CH5, LTC1867_CH6, LTC1867_CH7
+                                              }; //!< Builds the command for single-ended mode, input with respect to GND
 
 void setup() {
-  
+
   Serial.begin(SERIAL_BAUD);
-  radio.initialize(FREQUENCY,NODEID,NETWORKID);
+  radio.initialize(FREQUENCY, NODEID, NETWORKID);
 #ifdef IS_RFM69HW
   radio.setHighPower(); //uncomment only for RFM69HW!
 #endif
   radio.encrypt(ENCRYPTKEY);
   radio.promiscuous(promiscuousMode);
   //radio.setFrequency(919000000); //set frequency to some custom frequency
-  
-//Auto Transmission Control - dials down transmit power to save battery (-100 is the noise floor, -90 is still pretty good)
-//For indoor nodes that are pretty static and at pretty stable temperatures (like a MotionMote) -90dBm is quite safe
-//For more variable nodes that can expect to move or experience larger temp drifts a lower margin like -70 to -80 would probably be better
-//Always test your ATC mote in the edge cases in your own environment to ensure ATC will perform as you expect
+
+  //Auto Transmission Control - dials down transmit power to save battery (-100 is the noise floor, -90 is still pretty good)
+  //For indoor nodes that are pretty static and at pretty stable temperatures (like a MotionMote) -90dBm is quite safe
+  //For more variable nodes that can expect to move or experience larger temp drifts a lower margin like -70 to -80 would probably be better
+  //Always test your ATC mote in the edge cases in your own environment to ensure ATC will perform as you expect
 #ifdef ENABLE_ATC
   radio.enableAutoPower(-70);
 #endif
-  
+
   Serial.println("Node radio init");
-  
+
   if (flash.initialize())
   {
     Serial.print("SPI Flash Init OK ... UniqueID (MAC): ");
     flash.readUniqueId();
-    for (byte i=0;i<8;i++)
+    for (byte i = 0; i < 8; i++)
     {
       Serial.print(flash.UNIQUEID[i], HEX);
       Serial.print(' ');
@@ -143,7 +146,7 @@ void setup() {
   }
   else
     Serial.println("SPI Flash MEM not found (is chip soldered?)...");
-    
+
 #ifdef ENABLE_ATC
   Serial.println("RFM69_ATC Enabled (Auto Transmission Control)\n");
 #endif
@@ -159,7 +162,7 @@ float adc_voltage;
 uint8_t user_command;
 uint8_t adc_command;                             // The LTC1867 command byte
 uint16_t adc_code = 0;                           // The LTC1867 code
-int i,j,count,counter = 0;
+int i, j, count, counter = 0;
 char input;
 int hello = 0;
 int cmd;
@@ -169,7 +172,7 @@ char BTC_array[3];
 byte CTB;
 char zero[] = "0";
 
-void loop() 
+void loop()
 {
 
   if (Serial.available() > 0)
@@ -187,13 +190,13 @@ void loop()
         LTC1867_read(LTC1867L_SS, adc_command, &ADCcode[i]);             // Takes reading
         //read ADC
       }
-    
+
       writeADCtoFlash();
       time2 = micros();
       Serial.print("delay = ");
       Serial.println(time2 - time1);
     }
-    
+
     if (input == 'd') //d=dump flash area
     {
       Serial.println("Flash content:");
@@ -205,21 +208,21 @@ void loop()
         Serial.println();
         Serial.print("Next sector: ");
         Serial.println(ChNStartPos[i]);
-        while(counter<=(NUM_SAMPLES*2)){
+        while (counter <= (NUM_SAMPLES * 2)) {
           Serial.print(flash.readByte(ChNStartPos[i] + counter), HEX);
           Serial.print('.');
           counter++;
         }
       }
-      while(flash.busy());
+      while (flash.busy());
       Serial.println();
     }
-    
+
     if (input == 'e')
     {
       Serial.print("eErasing Flash chip ... ");
       flash.chipErase();
-      while(flash.busy());
+      while (flash.busy());
       Serial.println("DONE");
     }
     if (input == 'i')
@@ -230,7 +233,7 @@ void loop()
     }
 
 
-    if (input == 'w') 
+    if (input == 'w')
     {
       Serial.print("Enter string to save to flash chip:");
       if (readline(buff, 6, 10000) > 0)
@@ -241,7 +244,7 @@ void loop()
         Serial.println(" to flash memory.");
         Serial.println(strlen(buff));
 
-        flash.writeBytes(addr, buff, strlen(buff));        
+        flash.writeBytes(addr, buff, strlen(buff));
         addr = addr + (uint32_t)strlen(buff);
         Serial.println(addr);
       }
@@ -272,28 +275,29 @@ void loop()
   }
 
 
-  
+
   //check for any received packets
   if (radio.receiveDone())
   {
     Serial.println("Packet");
     Serial.println(idParser());
     Serial.println(cmdParser());
-    Serial.print('[');Serial.print(radio.SENDERID, DEC);Serial.print("] ");
+    Serial.print('['); Serial.print(radio.SENDERID, DEC); Serial.print("] ");
     for (byte i = 0; i < radio.DATALEN; i++)
       Serial.print((char)radio.DATA[i]);
-    Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
+    Serial.print("   [RX_RSSI:"); Serial.print(radio.RSSI); Serial.print("]");
 
     Serial.println();
 
-    if (radio.ACKRequested())
-    {
-      //byte theNodeID = radio.SENDERID;
-      radio.sendACK();
-      Serial.println(" CMD - ACK sent.");
-    }
+//    if (radio.ACKRequested())
+//    {
+//      //byte theNodeID = radio.SENDERID;
+//      radio.sendACK();
+//      Serial.println(" CMD - ACK sent.");
+//    }
 
-    int id = idParser();
+    int id = 6;
+    id = idParser();
     if (id == 99 || id == NODEID)
     {
       Serial.println("Initiate cmd");
@@ -306,22 +310,22 @@ void loop()
         char sending[50] = " ";
         char ID[2] = {' ', ' '};
         itoa(NODEID, ID, 10);
-        
+
         //cmd 0 Send back packet immediately (Delay computation)
         if (strlen(ID) == 1)
         {
           //Serial.println("here");
-          strcpy(sending,zero);
-          strcat(sending,ID);
-          strcat(sending,cmd_char);
+          strcpy(sending, zero);
+          strcat(sending, ID);
+          strcat(sending, cmd_char);
           Serial.println(cmd_char);
         }
         else if (strlen(ID) == 2)
         {
-          strcpy(sending,ID);
-          strcat(sending,cmd_char);
+          strcpy(sending, ID);
+          strcat(sending, cmd_char);
         }
-        strcat(sending," DELAY RECEIVED");
+        strcat(sending, " DELAY RECEIVED");
         Serial.println(sending);
         Serial.println(strlen(sending));
         radio.send(GATEWAYID, sending, strlen(sending));
@@ -352,7 +356,7 @@ void loop()
         char b;
         char b1[3] = {' ', ' ', '\0'};
 
-        
+
         for (i = 0; i < 8; i++)
         {
           //Loop through all channels (0-7)
@@ -363,85 +367,85 @@ void loop()
             counter++;
             if (strlen(ID) == 1)
             {
-              strcpy(sending,zero);
-              strcat(sending,ID);
-              strcat(sending,cmd_char);
+              strcpy(sending, zero);
+              strcat(sending, ID);
+              strcat(sending, cmd_char);
             }
             else if (strlen(ID) == 2)
             {
-              strcpy(sending,ID);
-              strcat(sending,cmd_char);
+              strcpy(sending, ID);
+              strcat(sending, cmd_char);
             }
-          
+
             for (j = 0; j < 8; j++)
             {
               if (currBlockMax <= ChNCurrPos[i])
                 break;
               //Send 8 readings
-              strcat(sending," ");
-              
-              p = BLOCKS[0] + ChNStartPos[i]+ ChNCurrPos[i];
+              strcat(sending, " ");
+
+              p = BLOCKS[0] + ChNStartPos[i] + ChNCurrPos[i];
               d = flash.readByte(p);
               byteToChar(d);
               ChNCurrPos[i] = ChNCurrPos[i] + 1;
-              strcat(sending,BTC_array);
-              
-              p = BLOCKS[0] + ChNStartPos[i]+ ChNCurrPos[i];
+              strcat(sending, BTC_array);
+
+              p = BLOCKS[0] + ChNStartPos[i] + ChNCurrPos[i];
               d = flash.readByte(p);
               byteToChar(d);
               ChNCurrPos[i] = ChNCurrPos[i] + 1;
-              strcat(sending,BTC_array);
+              strcat(sending, BTC_array);
             }
 
             Serial.flush();
-    
+
             retry_count = 0;
 
             delay(10);
             radio.send(GATEWAYID, sending, strlen(sending));
-    
+
           }
-  
+
           //Send change sensor CMD
           //Wait for response
           //Then continue
           if (strlen(ID) == 1)
           {
-            strcpy(sending,zero);
-            strcat(sending,ID);
-            strcat(sending,cmd_char);
+            strcpy(sending, zero);
+            strcat(sending, ID);
+            strcat(sending, cmd_char);
           }
           else if (strlen(ID) == 2)
           {
-            strcpy(sending,ID);
-            strcat(sending,cmd_char);
+            strcpy(sending, ID);
+            strcat(sending, cmd_char);
           }
-          strcat(sending," CHG SENSOR");
-  
+          strcat(sending, " CHG SENSOR");
+
           delay(10);
           radio.send(GATEWAYID, sending, strlen(sending));
 
           now = micros();
-          while(1)
+          while (1)
           {
             time1 = micros();
             if (radio.receiveDone())
             {
 
-              if ((char)radio.DATA[radio.DATALEN - 12] == 'C' && 
-                  (char)radio.DATA[radio.DATALEN - 11] == 'H' && 
+              if ((char)radio.DATA[radio.DATALEN - 12] == 'C' &&
+                  (char)radio.DATA[radio.DATALEN - 11] == 'H' &&
                   (char)radio.DATA[radio.DATALEN - 10] == 'G' &&
                   (char)radio.DATA[radio.DATALEN - 9 ] == ' ' &&
-                  (char)radio.DATA[radio.DATALEN - 8 ] == 'R' && 
-                  (char)radio.DATA[radio.DATALEN - 7 ] == 'E' && 
+                  (char)radio.DATA[radio.DATALEN - 8 ] == 'R' &&
+                  (char)radio.DATA[radio.DATALEN - 7 ] == 'E' &&
                   (char)radio.DATA[radio.DATALEN - 6 ] == 'C' &&
                   (char)radio.DATA[radio.DATALEN - 5 ] == 'E' &&
-                  (char)radio.DATA[radio.DATALEN - 4 ] == 'I' && 
+                  (char)radio.DATA[radio.DATALEN - 4 ] == 'I' &&
                   (char)radio.DATA[radio.DATALEN - 3 ] == 'V' &&
                   (char)radio.DATA[radio.DATALEN - 2 ] == 'E' &&
                   (char)radio.DATA[radio.DATALEN - 1 ] == 'D')
               {
-                break;      
+                break;
               }
 
             }
@@ -451,49 +455,49 @@ void loop()
               now = micros();
             }
           }
-          
+
         }
-        
+
         if (strlen(ID) == 1)
         {
-          strcpy(sending,zero);
-          strcat(sending,ID);
-          strcat(sending,cmd_char);
+          strcpy(sending, zero);
+          strcat(sending, ID);
+          strcat(sending, cmd_char);
           Serial.println(cmd_char);
         }
         else if (strlen(ID) == 2)
         {
-          strcpy(sending,ID);
-          strcat(sending,cmd_char);
+          strcpy(sending, ID);
+          strcat(sending, cmd_char);
         }
 
-        strcat(sending," DONE");
+        strcat(sending, " DONE");
         delay(10);
         radio.send(GATEWAYID, sending, strlen(sending));
         radio.send(GATEWAYID, sending, strlen(sending)); // Need second DONE command?????
 
         now = micros();
-        while(1)
+        while (1)
         {
           time1 = micros();
           if (radio.receiveDone())
           {
 
-            if ((char)radio.DATA[radio.DATALEN - 13] == 'D' && 
+            if ((char)radio.DATA[radio.DATALEN - 13] == 'D' &&
                 (char)radio.DATA[radio.DATALEN - 12] == 'O' &&
-                (char)radio.DATA[radio.DATALEN - 11] == 'N' && 
+                (char)radio.DATA[radio.DATALEN - 11] == 'N' &&
                 (char)radio.DATA[radio.DATALEN - 10] == 'E' &&
                 (char)radio.DATA[radio.DATALEN - 9 ] == ' ' &&
-                (char)radio.DATA[radio.DATALEN - 8 ] == 'R' && 
-                (char)radio.DATA[radio.DATALEN - 7 ] == 'E' && 
+                (char)radio.DATA[radio.DATALEN - 8 ] == 'R' &&
+                (char)radio.DATA[radio.DATALEN - 7 ] == 'E' &&
                 (char)radio.DATA[radio.DATALEN - 6 ] == 'C' &&
                 (char)radio.DATA[radio.DATALEN - 5 ] == 'E' &&
-                (char)radio.DATA[radio.DATALEN - 4 ] == 'I' && 
+                (char)radio.DATA[radio.DATALEN - 4 ] == 'I' &&
                 (char)radio.DATA[radio.DATALEN - 3 ] == 'V' &&
                 (char)radio.DATA[radio.DATALEN - 2 ] == 'E' &&
                 (char)radio.DATA[radio.DATALEN - 1 ] == 'D')
             {
-              break;      
+              break;
             }
 
           }
@@ -510,24 +514,24 @@ void loop()
 
       if (cmd == 3)
       {
-          
+
         Serial.print("3Erasing Flash chip ... ");
         flash.chipErase();
-        while(flash.busy());
+        while (flash.busy());
         Serial.println("DONE");
-      Serial.flush();        
+        Serial.flush();
         //cmd3 Start data capture
         setTimer1();
         resetFlashAddr();
         Serial.print("NUM_SAMPLES: ");
         Serial.println(NUM_SAMPLES);
-      Serial.flush();        
-        do 
+        Serial.flush();
+        do
         {
           //Serial.println(samples_taken);
           if (timer_rdy == 1)
           {
-            timer_rdy = 0;     
+            timer_rdy = 0;
             readADC();
             readADC();
             writeADCtoFlash();
@@ -535,25 +539,25 @@ void loop()
           }
           //samples_taken = samples_taken;
           //Serial.print("h");
-        }while(samples_taken < NUM_SAMPLES);
+        } while (samples_taken < NUM_SAMPLES);
         unsetTimer1();
-        samples_taken = 0;        
+        samples_taken = 0;
       }
       Serial.flush();
-      
+
     }
 
     Serial.flush();
     hello = 1;
   }
-  
+
   if (hello == 1)
   {
     Serial.println("Outside Receive");
     Serial.flush();
     hello = 0;
   }
-  
+
 }
 
 ISR (TIMER1_OVF_vect)
@@ -588,7 +592,7 @@ void readADC()
 void writeADCtoFlash()
 {
   char val[3] = {' ', ' ', '\0'};
-  byte lo,hi;
+  byte lo, hi;
 
   for (i = 0; i < 8; i++)
   {
@@ -599,7 +603,7 @@ void writeADCtoFlash()
 
     flash.writeByte(ChNStartPos[i] + ChNCurrPos[i], hi);
     ChNCurrPos[i] = ChNCurrPos[i] + 1;
-    flash.writeByte(ChNStartPos[i] + ChNCurrPos[i], lo);   
+    flash.writeByte(ChNStartPos[i] + ChNCurrPos[i], lo);
     ChNCurrPos[i] = ChNCurrPos[i] + 1;
   }
 }
@@ -644,9 +648,9 @@ void setTimer1()
   _TCCR1B = TCCR1B;
   _ICR1 = ICR1;
   _TIMSK1 = TIMSK1;
-  
+
   TCCR1A = 0;    // set entire TCCR1A register to 0
-  TCCR1B = 0;    // set entire TCCR1B register to 0 
+  TCCR1B = 0;    // set entire TCCR1B register to 0
   TCNT1 = 65535 - timer_sub;
 
   TIMSK1 |= (1 << TOIE1);
@@ -669,7 +673,11 @@ void unsetTimer1()
 int idParser()
 {
   //ID is first two bytes in DATA array
-  char ID[] = {(char)radio.DATA[0],(char)radio.DATA[1]};
+  char ID[2] = {(char)radio.DATA[0], (char)radio.DATA[1]};
+  //  Serial.println("In parser");
+  //  Serial.print(ID[0]);
+  //  Serial.println(ID[1]);
+  //  Serial.println(atoi(ID));
   return atoi(ID);
 }
 
@@ -734,8 +742,8 @@ void byteToChar(byte b)
 
       case 0x1:
         BTC_array[btc] = '1';
-        break;    
-        
+        break;
+
       case 0x2:
         BTC_array[btc] = '2';
         break;
@@ -743,7 +751,7 @@ void byteToChar(byte b)
       case 0x3:
         BTC_array[btc] = '3';
         break;
-        
+
       case 0x4:
         BTC_array[btc] = '4';
         break;
@@ -760,14 +768,14 @@ void byteToChar(byte b)
         BTC_array[btc] = '7';
         break;
 
-       case 0x8:
+      case 0x8:
         BTC_array[btc] = '8';
         break;
 
       case 0x9:
         BTC_array[btc] = '9';
-        break;      
-        
+        break;
+
       case 0xA:
         BTC_array[btc] = 'A';
         break;
@@ -775,7 +783,7 @@ void byteToChar(byte b)
       case 0xB:
         BTC_array[btc] = 'B';
         break;
-        
+
       case 0xC:
         BTC_array[btc] = 'C';
         break;
@@ -797,14 +805,14 @@ void byteToChar(byte b)
         break;
     }
   }
-  
+
   BTC_array[2] = '\0';
 }
 
 void charToByte(char c, char c1)
 {
   char array[2] = {c, c1};
-  byte lo,hi;
+  byte lo, hi;
   byte CTB_array[2];
 
   for (int ctb = 0; ctb < 2; ctb++)
@@ -817,8 +825,8 @@ void charToByte(char c, char c1)
 
       case '1':
         CTB_array[ctb] = 0x1;
-        break; 
-        
+        break;
+
       case '2':
         CTB_array[ctb] = 0x2;
         break;
@@ -826,47 +834,47 @@ void charToByte(char c, char c1)
       case '3':
         CTB_array[ctb] = 0x3;
         break;
-          
+
       case '4':
         CTB_array[ctb] = 0x4;
         break;
 
       case '5':
         CTB_array[ctb] = 0x5;
-        break; 
-         
+        break;
+
       case '6':
         CTB_array[ctb] = 0x6;
         break;
 
       case '7':
         CTB_array[ctb] = 0x7;
-        break;  
-        
+        break;
+
       case '8':
         CTB_array[ctb] = 0x8;
         break;
-        
+
       case '9':
         CTB_array[ctb] = 0x9;
-        break; 
-         
+        break;
+
       case 'A':
         CTB_array[ctb] = 0xA;
         break;
 
       case 'B':
         CTB_array[ctb] = 0xB;
-        break; 
-         
+        break;
+
       case 'C':
         CTB_array[ctb] = 0xC;
         break;
 
       case 'D':
         CTB_array[ctb] = 0xD;
-        break; 
-        
+        break;
+
       case 'E':
         CTB_array[ctb] = 0xE;
         break;
@@ -874,7 +882,7 @@ void charToByte(char c, char c1)
       case 'F':
         CTB_array[ctb] = 0xF;
         break;
-              
+
       default:
         Serial.println("BTC ERROR");
         break;
@@ -885,9 +893,9 @@ void charToByte(char c, char c1)
 }
 
 int freeRam () {
-  extern int __heap_start, *__brkval; 
-  int v; 
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
 
