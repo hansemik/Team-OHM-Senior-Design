@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+table#t01 tr:nth-child(even) {
+    background-color: #eee;
+    font-family: Courier New;
+}
+table#t01 tr:nth-child(odd) {
+    background-color: #fff;
+    font-family: Courier New;
+}
+table#t01 th {
+    color: black;
+    background-color: white;
+    padding:5px 10px;
+    font-family: Courier New;
+}
+table#t01 td {
+	text-align: center;
+	padding-top: 4px;
+	padding-bottom: 4px;
+	font-family: Courier New;
+}
+</style>
+
+  <% include ../partials/header.ejs %>
+
+</head>
+
+<body>
+
+<!--
+<% include ../partials/nav.ejs %>
+-->
+
+<div class="container">
+<h2>Team OHM Database</h2>
+
+<table id="t01">
+	<tr>
+		<th>   netid   </th>
+		<th>   nodeid   </th>
+		<th>   channel   </th>
+		<th>   sample_number   </th>
+		<th style="padding: 5px 90px";>   DateTime   </th>
+		<th>   Data   </th>
+	</tr>
+    <% results.forEach(function(r) { %>
+    	<tr>
+	        <td><%= r.netid %></td>
+	        <td><%= r.nodeid %></td>
+	        <td><%= r.channel %></td>
+	        <td><%= r.sample_number %></td>
+	        <td><%= r.datetime %></td>
+	        <td style="text-align: left";><%= r.data %></td>
+    	</tr>
+    
+    <% }); %>	
+</table>
+
+
+<!--
+<ul>
+    <% results.forEach(function(r) { %>
+        <li><%= r.netid %> - <%= r.nodeid %> - <%= r.channel %> - <%= r.sample_number %> - <%= r.datetime %> - <%= r.data %></li>
+    <% }); %>
+</ul>
+-->
+
+</div>
+
+</body>
+</html>
