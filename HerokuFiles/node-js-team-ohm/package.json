@@ -11,10 +11,11 @@
     "ejs": "2.3.3",
     "express": "4.13.3",
     "moment-timezone": "^0.5.3",
-    "pg": "4.5"
+    "pg": "4.5",
+    "jsdom": "8.4.0"
   },
   "engines": {
-    "node": "0.12.7"
+    "node": "5.0.0"
   },
   "repository": {
     "type": "git",

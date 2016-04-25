@@ -3,6 +3,7 @@ var express = require('express');
 var app = express();
 var pg = require('pg');
 var moment = require('moment-timezone');
+var jsdom = require("jsdom");
 
 moment.tz.setDefault("America/Los_Angeles");
 
@@ -23,7 +24,7 @@ app.get('/cool*', function (request, response) {
   //console.log(request.url);
   //console.log(typeof request.url);
 
-  var str = request.url
+  var str = request.url;
   str = str.replace("/cool", '');
   //console.log(str);
 
@@ -66,7 +67,68 @@ app.get('/db', function (request, response) {
       if (err)
        { console.error(err); response.send("Error " + err); }
       else
-       { response.render('pages/db', {results: result.rows} ); }
+       { 
+        var newArray = new Array(result.rows.length);
+        for (var i = 0; i < result.rows.length; i++)
+        {
+          newArray[i] = result.rows[result.rows.length - 1 - i];
+        }
+
+        response.render('pages/db', {results: newArray} ); }
+    });
+  });
+})
+
+app.get('/db.csv*', function (request, response) {
+  var numRows = request.url.replace("/db.csv?num_rows=", '');
+
+  pg.connect(process.env.DATABASE_URL, function(err, client, done) {
+    client.query('SELECT * FROM team_ohm_2016_table', function(err, result) {
+      done();
+      if (err)
+       { console.error(err); response.send("Error " + err); }
+      else
+       { 
+        var newArray = new Array(result.rows.length);
+        for (var i = 0; i < result.rows.length; i++)
+        {
+          newArray[i] = result.rows[result.rows.length - 1 - i];
+        }
+
+        // //var csvContent = "data:text/csv;charset=utf-8,";
+        // var csvContent = newArray.join("\n");
+
+        // response.set('Content-Type', 'application/octet-stream');
+        // response.send(csvContent);
+
+        var csvContent = 'netid,nodeid,channel,sample_number,datetime,data\n';
+
+        var dl_rows;
+        if (newArray.length > numRows)
+          dl_rows = numRows;
+        else
+          dl_rows = newArray.length;
+
+        for (var i = 0; i < dl_rows; i++)
+        {
+          csvContent += newArray[i].netid.toString() + ',' +
+                        newArray[i].nodeid.toString() + ',' +
+                        newArray[i].channel.toString() + ',' +
+                        newArray[i].sample_number.toString() + ',' +
+                        newArray[i].datetime.toString() + ',' +
+                        newArray[i].data.toString() + '\n';
+        }
+
+        // var t = newArray[0];
+        // console.log(t);
+        // console.log(typeof t);
+
+        response.set('Content-Type', 'application/octet-stream');
+        response.send(csvContent);
+      
+
+      }
+
     });
   });
 })
@@ -78,7 +140,14 @@ app.get('/db_old', function (request, response) {
       if (err)
        { console.error(err); response.send("Error " + err); }
       else
-       { response.render('pages/db_old', {results: result.rows} ); }
+       {
+        var newArray = new Array(result.rows.length);
+        for (var i = 0; i < result.rows.length; i++)
+        {
+          newArray[i] = result.rows[result.rows.length - 1 - i];
+        }
+
+        response.render('pages/db_old', {results: newArray} ); }
     });
   });
 })

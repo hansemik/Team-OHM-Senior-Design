@@ -23,6 +23,8 @@ table#t01 td {
 	padding-bottom: 4px;
 	font-family: Courier New;
 }
+
+
 </style>
 
   <% include ../partials/header.ejs %>
@@ -34,6 +36,18 @@ table#t01 td {
 <!--
 <% include ../partials/nav.ejs %>
 -->
+
+<div>
+	<img id = "img1" src="/osu-logo.jpg" alt="osu_logo" style="position: relative; top: 0; right: 0;">
+	<form id="form1" action="db.csv">
+		Enter Number of Rows to Download:
+		<br>
+			<input id="input1" type="text" name="num_rows">
+			<input type="submit" value="Download">
+		</br>
+	</form>
+</div>
+
 
 <div class="container">
 <h2>Team OHM Database</h2>
