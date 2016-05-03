@@ -208,11 +208,14 @@ void loop() {
   {
     timer_rdy = 0;
     
-    if ((tenMinCounter % 100) == 0 && waitThirtySec == false){
+    if ((tenMinCounter % 100) == 0 && tenMinCounter <= 59000 && waitThirtySec == false){
       PORTB ^= 1 << 1;
     }
-    if ((thirtySecCounter % 25) == 0 && waitThirtySec == true){
+    if ((tenMinCounter % 25) == 0 && tenMinCounter > 59000 && waitThirtySec == false){
       PORTB ^= 1 << 1;
+    }
+    if (waitThirtySec == true){
+      PORTB |= 1 << 1;
     }
     if (tenMinCounter >= 60000)
     {
@@ -226,6 +229,7 @@ void loop() {
       input = '2'; //Start data collection
       thirtySecCounter = 0;
       waitThirtySec = false;
+      PORTB &= ~(1 << 1);
     }
     
   }
@@ -271,12 +275,19 @@ void loop() {
         int wrong_cmd = 0;
         int CH = 0;
         byte b;
+        uint8_t blink_int = 0;
     
         //Receive command and data until done
         while(1)
         {
           if (radio.receiveDone())
           {  
+            blink_int = blink_int + 1;
+            if (blink_int >= 2)
+            {
+              PORTB ^= 1 << 1;
+              blink_int = 0;
+            }
             if (radio.DATALEN == 0)
             {
               continue; // ACK packet
@@ -299,7 +310,16 @@ void loop() {
                 strcat(sending,cmd);
               }
               strcat(sending, " DONE RECEIVED");
-              radio.send(idParser(), sending, strlen(sending));
+
+              retry_count = 0;
+              while(!radio.sendWithRetry(idParser(), sending, strlen(sending), 8, 100))
+              {                
+                retry_count++;
+                if (retry_count > 10)
+                {
+                  break;
+                }
+              }
               
               break;
             }
@@ -328,7 +348,16 @@ void loop() {
                 strcat(sending,cmd);
               }
               strcat(sending, " CHG RECEIVED");
-              radio.send(idParser(), sending, strlen(sending));
+
+              retry_count = 0;
+              while(!radio.sendWithRetry(idParser(), sending, strlen(sending), 8, 100))
+              {
+                retry_count++;
+                if (retry_count > 5)
+                {
+                  break;
+                }
+              }
   
               if (ChNCurrPos[CH] == 0)
               {
@@ -390,6 +419,7 @@ void loop() {
       input = ' ';
       wait_ms(10);
       send3G = true;
+      PORTB &= ~(1 << 1);
     }
     
     if (input == '3')

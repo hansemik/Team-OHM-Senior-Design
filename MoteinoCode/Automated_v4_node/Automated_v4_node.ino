@@ -223,7 +223,7 @@ void loop()
         char b1[3] = {' ', ' ', '\0'};
 
 
-        for (i = 0; i < 1; i++)
+        for (i = 1; i < 2; i++)
         {
           //Loop through all channels (0-7)
           currBlockMax = ChNCurrPos[i];

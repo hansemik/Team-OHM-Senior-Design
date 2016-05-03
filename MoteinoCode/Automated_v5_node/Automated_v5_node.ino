@@ -17,7 +17,7 @@
 //*********************************************************************************************
 //************ IMPORTANT SETTINGS - YOU MUST CHANGE/CONFIGURE TO FIT YOUR HARDWARE *************
 //*********************************************************************************************
-#define NODEID        03   //must be unique for each node on same network (range up to 254, 255 is used for broadcast)
+#define NODEID        02   //must be unique for each node on same network (range up to 254, 255 is used for broadcast)
 #define NETWORKID     100  //the same on all nodes that talk to each other (range up to 255)
 #define GATEWAYID     01
 //Match frequency to the hardware version of the radio on your Moteino (uncomment one):
@@ -272,7 +272,7 @@ void loop()
             while(!radio.sendWithRetry(GATEWAYID, sending, strlen(sending), 8, 100))
             {
               retry_count++;
-              if (retry_count > 5)
+              if (retry_count > 10)
               {
                 break;
               }
@@ -330,10 +330,9 @@ void loop()
               }
             }
             
-            if ( time1 > 500)
+            if ( time1 > 100)
             {
               radio.send(GATEWAYID, sending, strlen(sending));
-              now = micros();
             }
           }
           end_timer2();
@@ -386,10 +385,13 @@ void loop()
               break;
             }
           }
-          if ( time1 > 500)
+          if ( time1 > 100)
           {
             radio.send(GATEWAYID, sending, strlen(sending));
-            now = micros();
+          }
+          if ( time1 > 10000)
+          {
+            break;
           }
         }
         end_timer2();
